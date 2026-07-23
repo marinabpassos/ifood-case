@@ -93,23 +93,32 @@ exists natively in Unity Catalog for every table this project has read
 or written since feature 002 — this story is about verifying and
 documenting it, not building new logic.
 
-**Independent Test**: Query Unity Catalog's lineage system (or view it
-in Catalog Explorer) for `ifood_case.silver.yellow_taxi_trips` and
-confirm bronze appears as an upstream source, and bronze's own upstream
-shows the landing volume.
+**Independent Test**: Query Unity Catalog's table-level lineage system
+for `ifood_case.silver.yellow_taxi_trips` and confirm bronze appears as
+an upstream source; separately confirm in Catalog Explorer's lineage
+graph that bronze's own upstream shows the landing volume (see note
+below on why these are two different mechanisms).
 
 **Acceptance Scenarios**:
 
 1. **Given** every table in this project was read/written exclusively
-   through Unity Catalog, **When** lineage is queried for
-   `ifood_case.silver.yellow_taxi_trips`, **Then**
-   `ifood_case.bronze.yellow_taxi_trips` appears as its direct upstream
-   source.
-2. **Given** the same query for `ifood_case.bronze.yellow_taxi_trips`,
-   **When** lineage is queried, **Then**
-   `ifood_case.landing.yellow_taxi_raw` appears as its upstream source —
-   completing the landing→bronze→silver chain without any custom
-   lineage table built by this project.
+   through Unity Catalog, **When** lineage is queried via
+   `system.access.table_lineage`, **Then**
+   `ifood_case.bronze.yellow_taxi_trips` appears as
+   `ifood_case.silver.yellow_taxi_trips`'s direct upstream source (both
+   are tables — this edge is table-to-table).
+2. **Given** `ifood_case.landing.yellow_taxi_raw` is a Volume (files),
+   not a table, **When** `system.access.table_lineage` is queried for
+   `ifood_case.bronze.yellow_taxi_trips`, **Then** no upstream table
+   appears there (this system table only tracks table-to-table edges) —
+   the landing→bronze edge is instead confirmed via Catalog Explorer's
+   lineage graph UI, which does track file/volume-level sources, per
+   Databricks' own lineage feature set. This is a real platform
+   constraint discovered during planning, not a gap this feature needs
+   to work around: `table_lineage` still completes the table-to-table
+   half of the chain (bronze→silver) with zero custom code, and the UI
+   covers the volume-to-table half the same way it always has for any
+   Unity Catalog volume.
 
 ---
 
@@ -185,9 +194,13 @@ shows the landing volume.
   trigger at ~4.34%), and no alert for the other 3 rules or bronze's
   dedup check.
 - **SC-003**: A reader can trace `ifood_case.silver.yellow_taxi_trips`
-  back to `ifood_case.bronze.yellow_taxi_trips` and further to
-  `ifood_case.landing.yellow_taxi_raw` using Unity Catalog's native
-  lineage view alone — no custom lineage table consulted.
+  back to `ifood_case.bronze.yellow_taxi_trips` via
+  `system.access.table_lineage` (table-to-table), and further back to
+  `ifood_case.landing.yellow_taxi_raw` via Catalog Explorer's lineage
+  graph (the volume-to-table half — not captured by the queryable
+  system table, confirmed during planning) — using only Unity Catalog's
+  native lineage features, no custom lineage table built by this
+  project.
 - **SC-004**: The re-run's logged `rows_read`/`rows_written`/per-rule
   counts match exactly what feature 004's `ingestion-log.md` and feature
   006's `dq-run-log.md` already recorded — proving the pipelines are
