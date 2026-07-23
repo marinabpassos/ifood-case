@@ -27,6 +27,8 @@ Implements spec 004's FR-002 through FR-008 (User Stories 2-4):
 """
 
 import json
+import time
+from datetime import datetime
 
 from pyspark.sql import functions as F
 from pyspark.sql import types as T
@@ -38,6 +40,58 @@ VOLUME = "yellow_taxi_raw"
 TABLE = "yellow_taxi_trips"
 BASE_PATH = f"/Volumes/{CATALOG}/{LANDING_SCHEMA}/{VOLUME}"
 MONTHS = ["01", "02", "03", "04", "05"]
+
+# Feature 007: observability. Same schema/helpers duplicated in
+# src/silver/build_silver.py (research.md decision 2 - self-contained
+# scripts, no shared importable module).
+RUN_LOG_TABLE = "ifood_case.silver._pipeline_run_log"
+ALERT_THRESHOLD = 0.01
+
+LOG_SCHEMA = T.StructType([
+    T.StructField("pipeline_stage", T.StringType(), False),
+    T.StructField("executed_at", T.TimestampType(), False),
+    T.StructField("status", T.StringType(), False),
+    T.StructField("rows_read", T.LongType(), True),
+    T.StructField("rows_written", T.LongType(), True),
+    T.StructField("schema_check_status", T.StringType(), True),
+    T.StructField("duration_seconds", T.DoubleType(), True),
+    T.StructField("metrics", T.StringType(), True),
+    T.StructField("alerts", T.ArrayType(T.StringType()), True),
+])
+
+
+def check_alerts(named_counts: dict, rows_read: int) -> list:
+    """FR-004: >1% of rows_read for any named count triggers a visible alert."""
+    if not rows_read:
+        return []
+    alerts = []
+    for name, count in named_counts.items():
+        if count is None:
+            continue
+        pct = count / rows_read
+        if pct > ALERT_THRESHOLD:
+            alerts.append(f"{name}: {pct:.2%} > 1% threshold")
+    return alerts
+
+
+def write_run_log(spark, entry: dict) -> None:
+    """FR-002/FR-003: append one row to _pipeline_run_log, success or failure."""
+    row = {
+        "pipeline_stage": entry["pipeline_stage"],
+        "executed_at": entry["executed_at"],
+        "status": entry["status"],
+        "rows_read": entry.get("rows_read"),
+        "rows_written": entry.get("rows_written"),
+        "schema_check_status": entry.get("schema_check_status"),
+        "duration_seconds": entry.get("duration_seconds"),
+        "metrics": json.dumps(entry.get("metrics") or {}),
+        "alerts": entry.get("alerts") or [],
+    }
+    spark.createDataFrame([row], schema=LOG_SCHEMA).write.format("delta").mode(
+        "append"
+    ).saveAsTable(RUN_LOG_TABLE)
+    for alert in row["alerts"]:
+        print(f"ALERT [{entry['pipeline_stage']}]: {alert}")
 
 # Columns feature 003's full-schema comparison found drifting in type
 # family across months (float in 2023-01, integer in 2023-02..05) -- the
@@ -155,7 +209,36 @@ def ingest_bronze(spark) -> dict:
 
 
 if __name__ == "__main__":
-    result = ingest_bronze(spark)
+    start_time = time.time()
+    executed_at = datetime.utcnow()
+    try:
+        result = ingest_bronze(spark)
+        metrics = {"duplicates_removed": result.get("duplicates_removed")}
+        alerts = check_alerts(metrics, result.get("rows_read", 0))
+        write_run_log(spark, {
+            "pipeline_stage": "bronze",
+            "executed_at": executed_at,
+            "status": result.get("schema_validation_status", "failed"),
+            "rows_read": result.get("rows_read"),
+            "rows_written": result.get("rows_written"),
+            "schema_check_status": result.get("schema_validation_status"),
+            "duration_seconds": time.time() - start_time,
+            "metrics": metrics,
+            "alerts": alerts,
+        })
+    except Exception:
+        # NOTE: dbutils.notebook.exit() below raises its own internal
+        # control-flow exception on success -- it MUST stay outside this
+        # try block, or every successful run also logs a spurious
+        # "failed" row (found by actually running this, feature 007).
+        write_run_log(spark, {
+            "pipeline_stage": "bronze",
+            "executed_at": executed_at,
+            "status": "failed",
+            "duration_seconds": time.time() - start_time,
+        })
+        raise
+
     print(json.dumps(result))
     try:
         dbutils.notebook.exit(json.dumps(result))

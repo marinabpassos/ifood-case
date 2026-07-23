@@ -24,6 +24,8 @@ Implements spec 006's FR-001 through FR-008:
 """
 
 import json
+import time
+from datetime import datetime
 
 import yaml
 from pyspark.sql import functions as F
@@ -33,6 +35,58 @@ CATALOG = "ifood_case"
 BRONZE_SCHEMA = "bronze"
 BRONZE_TABLE = "yellow_taxi_trips"
 SILVER_SCHEMA = "silver"
+
+# Feature 007: observability. Same schema/helpers duplicated in
+# src/bronze/ingest_bronze.py (research.md decision 2 - self-contained
+# scripts, no shared importable module).
+RUN_LOG_TABLE = "ifood_case.silver._pipeline_run_log"
+ALERT_THRESHOLD = 0.01
+
+LOG_SCHEMA = T.StructType([
+    T.StructField("pipeline_stage", T.StringType(), False),
+    T.StructField("executed_at", T.TimestampType(), False),
+    T.StructField("status", T.StringType(), False),
+    T.StructField("rows_read", T.LongType(), True),
+    T.StructField("rows_written", T.LongType(), True),
+    T.StructField("schema_check_status", T.StringType(), True),
+    T.StructField("duration_seconds", T.DoubleType(), True),
+    T.StructField("metrics", T.StringType(), True),
+    T.StructField("alerts", T.ArrayType(T.StringType()), True),
+])
+
+
+def check_alerts(named_counts: dict, rows_read: int) -> list:
+    """FR-004: >1% of rows_read for any named count triggers a visible alert."""
+    if not rows_read:
+        return []
+    alerts = []
+    for name, count in named_counts.items():
+        if count is None:
+            continue
+        pct = count / rows_read
+        if pct > ALERT_THRESHOLD:
+            alerts.append(f"{name}: {pct:.2%} > 1% threshold")
+    return alerts
+
+
+def write_run_log(spark, entry: dict) -> None:
+    """FR-002/FR-003: append one row to _pipeline_run_log, success or failure."""
+    row = {
+        "pipeline_stage": entry["pipeline_stage"],
+        "executed_at": entry["executed_at"],
+        "status": entry["status"],
+        "rows_read": entry.get("rows_read"),
+        "rows_written": entry.get("rows_written"),
+        "schema_check_status": entry.get("schema_check_status"),
+        "duration_seconds": entry.get("duration_seconds"),
+        "metrics": json.dumps(entry.get("metrics") or {}),
+        "alerts": entry.get("alerts") or [],
+    }
+    spark.createDataFrame([row], schema=LOG_SCHEMA).write.format("delta").mode(
+        "append"
+    ).saveAsTable(RUN_LOG_TABLE)
+    for alert in row["alerts"]:
+        print(f"ALERT [{entry['pipeline_stage']}]: {alert}")
 
 # The contract lives in the repo (contracts/nyc_taxi_silver.yaml); this
 # script runs in the Databricks workspace, so it reads the copy uploaded
@@ -144,10 +198,47 @@ def build_silver(spark) -> dict:
 
 
 if __name__ == "__main__":
+    start_time = time.time()
+    executed_at = datetime.utcnow()
     try:
-        result = build_silver(spark)
-    except ValueError as exc:
-        result = {"schema_assertion_status": "failed", "error": str(exc)}
+        try:
+            result = build_silver(spark)
+        except ValueError as exc:
+            result = {"schema_assertion_status": "failed", "error": str(exc)}
+
+        metrics = {
+            "total_amount_negative_or_zero_count": result.get("total_amount_negative_or_zero_count"),
+            "passenger_count_null_or_zero_count": result.get("passenger_count_null_or_zero_count"),
+            "dropoff_before_pickup_count": result.get("dropoff_before_pickup_count"),
+            "out_of_range_dates_count": result.get("out_of_range_dates_count"),
+            "total_dropped": result.get("total_dropped"),
+        }
+        rule_metrics = {k: v for k, v in metrics.items() if k != "total_dropped"}
+        alerts = check_alerts(rule_metrics, result.get("rows_read", 0))
+        write_run_log(spark, {
+            "pipeline_stage": "silver",
+            "executed_at": executed_at,
+            "status": result.get("schema_assertion_status", "failed"),
+            "rows_read": result.get("rows_read"),
+            "rows_written": result.get("rows_written"),
+            "schema_check_status": result.get("schema_assertion_status"),
+            "duration_seconds": time.time() - start_time,
+            "metrics": metrics,
+            "alerts": alerts,
+        })
+    except Exception:
+        # NOTE: dbutils.notebook.exit() below raises its own internal
+        # control-flow exception on success -- it MUST stay outside this
+        # try block, or every successful run also logs a spurious
+        # "failed" row (found by actually running this, feature 007).
+        write_run_log(spark, {
+            "pipeline_stage": "silver",
+            "executed_at": executed_at,
+            "status": "failed",
+            "duration_seconds": time.time() - start_time,
+        })
+        raise
+
     print(json.dumps(result))
     try:
         dbutils.notebook.exit(json.dumps(result))
