@@ -175,7 +175,9 @@ below on why these are two different mechanisms).
 
 - **Pipeline Run Log Entry**: one row per (pipeline stage, execution).
   Fields: `pipeline_stage` (`bronze` | `silver`), `executed_at`,
-  `status` (`success` | `failed` | `partial`), `rows_read`,
+  `status` (`pass` | `failed` — the same two values features 004/006's
+  scripts already produce; there is no "partial" state, both scripts
+  fail as a whole unit on schema mismatch), `rows_read`,
   `rows_written`, `schema_check_status`, `duration_seconds`,
   stage-specific metrics (e.g. bronze's duplicates-removed count,
   silver's 4 independent per-rule counts and total-dropped), and a list
