@@ -1,8 +1,8 @@
 # Phase 1 Data Model: Análises Analíticas
 
-No new table or schema — both entities are documentation-level records
-of a read-only query, its result, and (per the 2026-07-23 spec revision)
-a chart image, not physical data structures.
+No new table or schema — all entities are documentation-level records
+of a read-only query, its result, and (per the 2026-07-23 spec
+revisions) one or more chart images, not physical data structures.
 
 ## Analytical Answer
 
@@ -33,3 +33,34 @@ Two instances, one per question (spec Key Entities).
 **Relationships**: Both Analytical Answers read from the same source —
 `ifood_case.silver.yellow_taxi_trips` (feature 006) — but have no
 relationship to each other (different grain, different scope).
+
+## Daily Trip Volume Decomposition (bonus)
+
+One instance, distinct from the two Analytical Answers above (spec User
+Story 5 / Key Entities).
+
+| Field | Notes |
+|---|---|
+| `query_file` | `analysis/daily_trip_counts.sql` — `GROUP BY date(tpep_pickup_datetime)`, `COUNT(*)`, no month filter |
+| `daily_counts` | ~151 rows (one per calendar day, Jan 1-May 31, 2023) |
+| `trend_component` | Prophet's fitted trend, from `Prophet(yearly_seasonality=False, weekly_seasonality=True, daily_seasonality=False)` (research.md §7) |
+| `weekly_seasonality_component` | Prophet's fitted weekly-seasonality curve (same model) |
+| `chart_images` | `analysis/charts/daily_trip_volume_trend.png` (`model.plot(forecast)`) and `analysis/charts/daily_trip_volume_components.png` (`model.plot_components(forecast)`) — research.md §8 |
+| `computed_at` | Timestamp the notebook actually ran against serverless compute |
+| `plain_language_summary` | One-line description of the observed trend/seasonality in `analysis/answers.md`, explicitly labeled as bonus content |
+
+**Validation rules**:
+- `daily_counts` MUST cover every calendar day in the Jan-May 2023
+  window with no gaps invented or assumed (spec Acceptance Scenario 1).
+- `chart_images` MUST be labeled and presented separately from the two
+  required Analytical Answers' charts — never merged into the same
+  file or section in a way that could be mistaken for a required
+  answer (FR-009).
+- Yearly seasonality MUST be disabled in the Prophet model — the data
+  window (~5 months) cannot support a meaningful yearly estimate
+  (research.md §7).
+
+**Relationships**: Reads from the same
+`ifood_case.silver.yellow_taxi_trips` source as the two Analytical
+Answers, but at daily (not monthly/hourly) grain, and is not one of the
+two required answers.

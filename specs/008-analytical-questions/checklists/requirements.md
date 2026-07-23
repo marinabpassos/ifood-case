@@ -47,3 +47,8 @@
   the plain-SQL path (FR-004 unchanged) so a business user can still
   query directly without needing a notebook or chart. Re-validated: all
   16 items still pass.
+- 2026-07-23 update #2 (pre-`/speckit-plan`, user request): added User
+  Story 5 / FR-007-009 / SC-006 for a bonus daily trip-volume trend and
+  weekly-seasonality decomposition, explicitly labeled as differentiator
+  content distinct from the two required questions. Re-validated: all 20
+  items still pass.

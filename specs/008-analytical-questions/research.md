@@ -8,7 +8,11 @@ was revised once, before `/speckit-tasks`, based on explicit user
 feedback that a genuine Databricks notebook was wanted for the chart
 requirement (FR-006) — not a local script — since the notebook is
 itself meant to demonstrate the platform's analysis/visualization
-capability, not just be the shortest path to a number.
+capability, not just be the shortest path to a number. Decisions 6-8
+were added in a second pre-`/speckit-tasks` revision, for the bonus
+Prophet-based daily trip-volume analysis (User Story 5 / FR-007-009)
+the user requested as a differentiator on top of the two required
+questions.
 
 ## 1. Notebook + standalone SQL, not SQL-only (revised)
 
@@ -100,7 +104,74 @@ capability, not just be the shortest path to a number.
   because a bar chart is marginally more consistent visually with Q1
   without materially changing readability at 24 categories.
 
-## 6. Execution mechanism
+## 6. Bonus analysis: Prophet availability and installation mechanism
+
+- **Decision**: Prophet is **not** pre-installed on Databricks Runtime
+  (unlike `matplotlib`), so it's declared as a job-level PyPI library
+  dependency in the `databricks jobs submit` JSON payload —
+  `"libraries": [{"pypi": {"package": "prophet"}}]` on the
+  `generate_answers` task — rather than a `%pip install prophet` magic
+  cell inside the notebook.
+- **Rationale**: `generate_answers.py` is uploaded and run as a plain
+  `# Databricks notebook source` script with no `# COMMAND ----------`
+  cell markers (the same pattern as every prior feature's notebook) —
+  `%pip` magic commands are an interactive-notebook-cell mechanism and
+  their behavior in a single-cell plain-script SOURCE notebook run via
+  a job is not something to rely on unverified. The Jobs API's per-task
+  `libraries` field is the documented, job-native way to install a PyPI
+  package before a task runs, regardless of notebook cell structure.
+- **Alternatives considered**: `%pip install prophet` as the first line
+  of the script — rejected due to the cell-structure uncertainty above.
+  A cluster-scoped init script or a persistent library — rejected as
+  unnecessary infrastructure for a single read-only bonus analysis on
+  serverless compute.
+
+## 7. Bonus analysis: daily trip-count query and decomposition design
+
+- **Decision**: `analysis/daily_trip_counts.sql` computes
+  `GROUP BY date(tpep_pickup_datetime)`, `COUNT(*)` across the whole
+  silver table (no month filter) — one row per calendar day, ~151 rows
+  for Jan 1-May 31, 2023. The notebook collects this to a pandas
+  DataFrame (`ds`/`y` columns, Prophet's required shape), fits
+  `Prophet(yearly_seasonality=False, weekly_seasonality=True,
+  daily_seasonality=False)`, and calls `.predict()` on the same
+  historical dates (no forecast into unseen future dates — the ask was
+  to see trend/seasonality in the existing data, not to forecast).
+- **Rationale**: Yearly seasonality is explicitly disabled because
+  ~5 months of data cannot support a meaningful yearly-cycle estimate —
+  Prophet would either error or fit an overfit, meaningless yearly
+  curve on less than one full period. Weekly seasonality is exactly the
+  "repeating pattern" the user asked to see (weekday vs. weekend
+  ridership). Daily seasonality doesn't apply since the series is
+  already aggregated to one point per day (no sub-daily resolution to
+  decompose).
+- **Alternatives considered**: Forecasting future (June+) trip counts —
+  rejected, out of scope for "ver sazonalidade, tendência" (the user
+  asked to see the existing pattern, not predict unseen data). A
+  from-scratch statsmodels STL decomposition instead of Prophet —
+  rejected, the user explicitly named Prophet.
+
+## 8. Bonus analysis: chart output
+
+- **Decision**: Two chart images, both clearly labeled as bonus/
+  differentiator content and kept visually and by-filename distinct
+  from the two required questions' charts: `daily_trip_volume_trend.png`
+  (`model.plot(forecast)` — actual daily counts with the fitted
+  trend/seasonality curve overlaid) and
+  `daily_trip_volume_components.png` (`model.plot_components(forecast)`
+  — separate trend and weekly-seasonality subplots, Prophet's own
+  standard decomposition view). Both round-trip through the same
+  base64-in-JSON-output mechanism as decision 3 above.
+- **Rationale**: `plot_components` is Prophet's own built-in,
+  purpose-built way to show trend and seasonality separately — no
+  need to hand-roll a custom decomposition chart when the library
+  already produces the standard one.
+- **Alternatives considered**: A single combined figure — rejected,
+  `plot()` and `plot_components()` serve different, complementary
+  purposes (raw fit vs. decomposed components) and Prophet returns them
+  as two separate figures natively.
+
+## 9. Execution mechanism
 
 - **Decision**: `generate_answers.py` is a Databricks notebook-source
   script, imported and run via `databricks jobs submit` on serverless
@@ -111,4 +182,6 @@ capability, not just be the shortest path to a number.
 - **Rationale**: Two different audiences, two different execution paths
   — a business user never needs to touch a notebook or job to get the
   numbers; the notebook is specifically for the chart-generation
-  requirement.
+  requirement. The bonus analysis's `jobs submit` payload additionally
+  carries the `libraries` field from decision 6 above, scoped to the
+  `generate_answers` task only.

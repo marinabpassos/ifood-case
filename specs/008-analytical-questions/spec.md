@@ -137,6 +137,48 @@ for each question, independent of whether anyone runs the SQL.
 
 ---
 
+### User Story 5 - Bonus: daily trip volume, trend and seasonality (Priority: P5)
+
+As the case evaluator looking for creativity beyond the two required
+questions, I need to see how the *daily* number of trips across the
+whole Jan-May 2023 window behaves over time — whether it's trending up
+or down, and whether it follows a repeating weekly pattern — presented
+visually, so I can assess a differentiator analysis that goes beyond a
+simple average.
+
+**Why this priority**: Explicitly a bonus/differentiator, not part of
+the case brief's two required questions (User Stories 1-2) — sequenced
+last and must never be confused with, or substitute for, the required
+answers. Directly serves the case's own "criatividade" evaluation
+criterion, matching this project's existing pattern of clearly labeling
+differentiator content separately from official deliverables (see
+`DECISOES_PROJETO.md`'s treatment of the roadmap's own diferencial
+feature).
+
+**Independent Test**: Open `analysis/` and confirm a daily trip-count
+time series exists with a trend/seasonality decomposition and a chart,
+clearly labeled as bonus content, independent of whether the two
+required questions (User Stories 1-2) are being reviewed.
+
+**Acceptance Scenarios**:
+
+1. **Given** `ifood_case.silver.yellow_taxi_trips` contains cleaned
+   trips across January-May 2023, **When** trips are counted per
+   calendar day of `tpep_pickup_datetime`, **Then** one row per day
+   is produced covering the full date range with no gaps invented or
+   assumed away.
+2. **Given** the daily trip-count series, **When** it is decomposed into
+   trend and seasonality components, **Then** both an overall trend
+   (rising/falling/flat) and a repeating weekly pattern (e.g., weekday
+   vs. weekend ridership) are identifiable from the output.
+3. **Given** the decomposition is complete, **When** it is delivered,
+   **Then** it is saved as chart image(s) in `analysis/`, visually
+   distinct from and clearly labeled apart from the two required
+   questions' charts (User Story 4) — a reader must not mistake this
+   bonus analysis for a required answer.
+
+---
+
 ### Edge Cases
 
 - If a given hour of the day in May has zero trips (unlikely at this
@@ -180,6 +222,19 @@ for each question, independent of whether anyone runs the SQL.
   the same result, not a replacement for the plain-SQL path (FR-004
   still applies unchanged; a business user who prefers SQL over a chart
   is never blocked from that).
+- **FR-007**: A bonus analysis MUST compute the daily trip count across
+  the full January-May 2023 window in
+  `ifood_case.silver.yellow_taxi_trips` — one row per calendar day of
+  `tpep_pickup_datetime`, whole fleet, no additional filtering beyond
+  what the silver table already guarantees.
+- **FR-008**: The daily trip-count series MUST be decomposed into a
+  trend component and a weekly seasonality component, so both the
+  overall direction of ridership and any repeating day-of-week pattern
+  are identifiable.
+- **FR-009**: The trend/seasonality decomposition MUST be saved as
+  chart image(s) in `analysis/`, and MUST be clearly labeled as bonus/
+  differentiator content — distinct from, and never presented as a
+  substitute for, the two required questions' answers (FR-001/FR-002).
 
 ### Key Entities
 
@@ -188,6 +243,12 @@ for each question, independent of whether anyone runs the SQL.
   representing those rows, and when it was computed. Two instances:
   monthly average `total_amount` (5 rows), hourly average
   `passenger_count` for May (24 rows).
+- **Daily Trip Volume Decomposition** (bonus): the daily trip-count
+  series (~151 rows, one per calendar day Jan 1-May 31, 2023), its
+  trend component, its weekly seasonality component, one or more chart
+  images representing the decomposition, and when it was computed. Not
+  one of the two required Analytical Answers — a separate, clearly
+  labeled differentiator entity.
 
 ## Success Criteria *(mandatory)*
 
@@ -209,6 +270,10 @@ for each question, independent of whether anyone runs the SQL.
 - **SC-005**: A reader can see each answer as a chart image in
   `analysis/` without opening Databricks, running any code, or
   configuring a visualization themselves.
+- **SC-006**: A reader can see the daily trip-count trend and weekly
+  seasonality pattern as chart image(s) in `analysis/` without running
+  anything, and the material is clearly distinguishable as bonus content
+  rather than one of the two required answers.
 
 ## Assumptions
 
@@ -235,3 +300,10 @@ for each question, independent of whether anyone runs the SQL.
   chart for both questions is a reasonable default) — the business
   requirement is "visually readable at a glance," not a specific chart
   library or format.
+- The bonus daily trip-volume analysis (User Story 5 / FR-007-009) is
+  explicitly a differentiator, added after the case's two required
+  questions, at the user's own request (2026-07-23) — its scope,
+  library choice, and depth are implementation decisions (planning
+  phase), not part of the case brief's literal requirements. It must
+  never be presented in a way that could be mistaken for one of the two
+  required answers.

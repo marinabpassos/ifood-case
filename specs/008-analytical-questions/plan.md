@@ -22,6 +22,13 @@ transcribe the result locally" pattern every prior feature already uses
 — no new Databricks infrastructure (no Volume, no local matplotlib
 install) needed.
 
+Additionally ships one bonus/differentiator analysis (user request,
+2026-07-23), in the same notebook: a daily trip-count time series across
+the full Jan-May 2023 window, decomposed into trend and weekly
+seasonality using Prophet, with its own two chart images — clearly
+labeled as bonus content, never presented as a substitute for the two
+required answers above.
+
 ## Technical Context
 
 **Language/Version**: Two languages, deliberately: plain SQL (the
@@ -35,7 +42,12 @@ result is at most 24 rows, trivially small to collect to the driver),
 `matplotlib` (pre-installed on Databricks Runtime, generates the chart
 images; no new dependency to add to `requirements.txt` since it never
 runs locally), `base64`/`io` (stdlib, to round-trip the PNG bytes through
-the job's JSON output).
+the job's JSON output). Bonus analysis only: `prophet` — **not**
+pre-installed on Databricks Runtime, declared as a job-level PyPI
+library (`"libraries": [{"pypi": {"package": "prophet"}}]`) on the
+`generate_answers` task rather than a `%pip install` cell (research.md
+§6); `pandas` (already a PySpark/Databricks Runtime transitive
+dependency) to shape the `ds`/`y` DataFrame Prophet requires.
 
 **Storage**: Reads `ifood_case.silver.yellow_taxi_trips` only (features
 004-006). Writes nothing — no table, no schema change.
@@ -64,8 +76,8 @@ the SQL Warehouse.
 **Constraints**: Free Edition's serverless-only compute / single
 2X-Small SQL Warehouse constraints (feature 002) apply unchanged.
 
-**Scale/Scope**: 2 standalone `.sql` files, 1 notebook (2 queries + 2
-chart-generation cells), 2 PNG chart images, 1 results document.
+**Scale/Scope**: 3 standalone `.sql` files, 1 notebook (3 queries + 4
+chart-generation cells total), 4 PNG chart images, 1 results document.
 
 ## Constitution Check
 
@@ -76,7 +88,7 @@ chart-generation cells), 2 PNG chart images, 1 results document.
 | I. Data Quality Is a Gate | No | Reads already-cleaned data (features 004-006); introduces no new data-quality rule. |
 | II. Data Contracts First | No | Reads the silver table under its existing contract (feature 005); doesn't write any table, so no new contract is needed. |
 | III. Observability Is Part of the Deliverable | No | A read-only analytical notebook is not a pipeline execution in Principle III's sense (no rows dropped/flagged, nothing to log to `_pipeline_run_log`). |
-| IV. Fixed Stack, Justified Deviations | **Yes** | PySpark (fixed stack) plus `matplotlib`, which ships with Databricks Runtime already — not a new dependency introduced by this project, just a standard-library-adjacent tool already present on the fixed compute environment. The standalone `.sql` files use the constitution's own named "Consumo final: SQL via Databricks SQL Warehouse" path directly. |
+| IV. Fixed Stack, Justified Deviations | **Yes** | PySpark (fixed stack) plus `matplotlib`, which ships with Databricks Runtime already — not a new dependency introduced by this project, just a standard-library-adjacent tool already present on the fixed compute environment. The standalone `.sql` files use the constitution's own named "Consumo final: SQL via Databricks SQL Warehouse" path directly. **Justified deviation**: the bonus analysis adds `prophet`, a genuinely new dependency not part of the fixed stack or pre-installed on the Runtime — justified because it's explicitly user-requested differentiator content (not pipeline logic), scoped to a single job-level library declaration on one task of one read-only analytical notebook, with zero footprint on any pipeline stage (bronze/silver) or its dependencies. |
 | V. Spec-Driven Development Workflow | **Yes** | Specify → Plan (this document, revised once on user feedback before tasks) → Tasks → Implement — satisfied by construction. |
 | VI. Lean Instructions, Simple Architecture | **Yes** | One notebook, two SQL files, one results doc — no new schema, no new table, no `src/` package. The notebook is not speculative scope: it's the concrete mechanism chosen (over a simpler pure-SQL-only path) specifically to satisfy spec FR-006/SC-005 (chart requirement), a real, already-approved requirement — not gold-plating. |
 
@@ -108,11 +120,14 @@ ifood_case/
 ├── analysis/
 │   ├── avg_total_amount_by_month.sql        # US1/US3 / FR-001, FR-004: standalone query, business-SQL path
 │   ├── avg_passenger_count_by_hour_may.sql  # US2/US3 / FR-002, FR-004: standalone query, business-SQL path
-│   ├── generate_answers.py                  # US4 / FR-006: Databricks notebook - runs both queries via spark.sql(), renders + saves chart PNGs
+│   ├── daily_trip_counts.sql                # US5 (bonus) / FR-007: standalone query, daily trip counts Jan-May 2023
+│   ├── generate_answers.py                  # US4/US5 / FR-006, FR-009: Databricks notebook - runs all 3 queries via spark.sql(), renders + saves chart PNGs, fits Prophet for the bonus decomposition
 │   ├── charts/
 │   │   ├── avg_total_amount_by_month.png    # Generated by generate_answers.py, decoded from job output
-│   │   └── avg_passenger_count_by_hour_may.png
-│   └── answers.md                           # US3/US4 / FR-004-006: both questions' full results, embedded charts, plain-language answers
+│   │   ├── avg_passenger_count_by_hour_may.png
+│   │   ├── daily_trip_volume_trend.png      # Bonus (US5): Prophet model.plot(forecast)
+│   │   └── daily_trip_volume_components.png # Bonus (US5): Prophet model.plot_components(forecast)
+│   └── answers.md                           # US3/US4/US5 / FR-004-009: both required questions' full results + embedded charts + plain-language answers, plus the bonus analysis clearly labeled as differentiator content
 ```
 
 **Structure Decision**: Single-project layout, consistent with features
@@ -125,10 +140,14 @@ always meant for. No `tests/` directory — verification is operational
 
 ## Complexity Tracking
 
-*No entries — the Constitution Check above found no violations or
-workarounds requiring justification. The notebook is the direct
-implementation of an already-approved spec requirement (FR-006), not an
-unplanned addition.*
+| Deviation | Why needed | Simpler alternative rejected because |
+|---|---|---|
+| `prophet` added as a job-level PyPI library, not part of the fixed stack | Bonus/differentiator analysis (User Story 5) explicitly requested by the user; no fixed-stack tool performs trend/seasonality decomposition | Hand-rolled decomposition (e.g., a manual weekly rolling average) would not be a genuine Prophet-based analysis, which the user specifically named |
+
+No other entries — the rest of the Constitution Check above found no
+violations or workarounds requiring justification. The notebook itself
+is the direct implementation of an already-approved spec requirement
+(FR-006), not an unplanned addition.
 
 ## Post-Design Constitution Re-Check
 
@@ -136,4 +155,7 @@ Re-evaluated after Phase 1 (`data-model.md`, `quickstart.md`): unchanged
 from the pre-Phase-0 assessment above. `data-model.md` confirms the two
 "Analytical Answer" entities now include a chart-image field matching
 spec's updated Key Entities, with nothing extraneous beyond what FR-006
-asks for. **Result: PASS, no new violations.**
+asks for. The added "Daily Trip Volume Decomposition" (bonus) entity is
+scoped exactly to FR-007-009, with its Complexity Tracking entry above
+covering the one new dependency it introduces. **Result: PASS, no new
+violations.**
