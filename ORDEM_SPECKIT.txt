@@ -1,0 +1,49 @@
+ORDEM DE USO DO SPEC KIT (GitHub SDD) NESTE PROJETO
+=====================================================
+
+Todos os comandos abaixo sao skills do Claude Code, chamadas digitando "/"
+no chat (ex: /speckit-constitution). Nao rodam no terminal.
+
+FLUXO PRINCIPAL (nesta ordem)
+------------------------------
+1. /speckit-constitution
+   Define os principios e regras do projeto (constituicao).
+   Rodar uma vez no inicio, ou quando os principios mudarem.
+
+2. /speckit-specify
+   Cria a especificacao baseline: o que sera construido e por que.
+
+3. /speckit-clarify   [OPCIONAL]
+   Faz perguntas estruturadas para reduzir ambiguidades na spec.
+   Rodar depois do specify e antes do plan, se a spec tiver pontos em aberto.
+
+4. /speckit-plan
+   Cria o plano de implementacao a partir da spec.
+
+5. /speckit-tasks
+   Gera as tarefas acionaveis a partir do plano.
+
+6. /speckit-analyze   [OPCIONAL]
+   Relatorio de consistencia entre spec, plano e tasks.
+   Rodar depois do tasks e antes do implement.
+
+7. /speckit-checklist   [OPCIONAL]
+   Gera checklists de qualidade para validar completude e clareza
+   dos requisitos. Rodar depois do plan.
+
+8. /speckit-implement
+   Executa a implementacao das tarefas geradas.
+
+9. /speckit-converge
+   Avalia o estado atual do codigo e adiciona tarefas restantes
+   que ainda faltam. Util para retomar o projeto ou fechar lacunas.
+
+EXTRA
+------
+/speckit-taskstoissues
+   Converte as tasks geradas em issues do GitHub.
+
+RESUMO VISUAL
+--------------
+constitution -> specify -> [clarify] -> plan -> [checklist] -> tasks
+   -> [analyze] -> implement -> converge -> [taskstoissues]
