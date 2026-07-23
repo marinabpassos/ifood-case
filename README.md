@@ -49,10 +49,45 @@ para as restrições de ambiente e justificativas.
 
 ## Como Executar
 
-_Placeholder — esta seção será preenchida quando a feature de ingestão for
-implementada. Deverá conter: como configurar o ambiente/credenciais do
-Databricks, como rodar o pipeline de ingestão bronze → silver, e como
-consultar os resultados via SQL Warehouse._
+### 1. Autenticação com o Databricks
+
+Configure o [Databricks CLI](https://docs.databricks.com/dev-tools/cli/index.html)
+com um perfil apontando para o workspace Free Edition:
+
+```
+databricks configure --token --profile DEFAULT
+databricks current-user me --profile DEFAULT   # valida a autenticação
+```
+
+Credenciais ficam em `~/.databrickscfg` (fora do repositório, nunca
+versionadas — ver `.gitignore`).
+
+### 2. Ambiente & Landing Zone (feature 002)
+
+Os scripts em `src/ingestion/` são escritos em formato de notebook
+Databricks (`# Databricks notebook source`) e podem ser importados e
+executados diretamente no workspace via CLI:
+
+```
+databricks workspace import /Workspace/Users/<seu-usuario>/ifood_case/network_check \
+  --file src/ingestion/network_check.py --language PYTHON --format SOURCE --overwrite
+databricks workspace import /Workspace/Users/<seu-usuario>/ifood_case/landing_zone \
+  --file src/ingestion/landing_zone.py --language PYTHON --format SOURCE --overwrite
+databricks workspace import /Workspace/Users/<seu-usuario>/ifood_case/land_files \
+  --file src/ingestion/land_files.py --language PYTHON --format SOURCE --overwrite
+```
+
+Execute cada um como job avulso em compute serverless (`databricks jobs
+submit --json '{"tasks":[{"task_key":"...", "notebook_task":{"notebook_path":"..."}}]}'`),
+nesta ordem:
+
+1. `network_check.py` — testa acesso direto à fonte NYC TLC (FR-001)
+2. `landing_zone.py` — cria catalog/schema/volume da landing zone (FR-003)
+3. `land_files.py` — baixa e verifica os 5 arquivos mensais (FR-004/005/006/008)
+
+Resultado esperado, decisões tomadas e eventuais restrições encontradas
+estão documentados em `DECISOES_PROJETO.md` §2. Detalhes de design em
+`specs/002-ambiente-landing-zone/`.
 
 ## Perguntas Analíticas Respondidas
 

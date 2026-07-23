@@ -8,6 +8,14 @@
 
 **Input**: User description: "feature 002 - Ambiente & Landing Zone"
 
+## Clarifications
+
+### Session 2026-07-22
+
+- Q: The Edge Cases call out files that are "unusually small, unusually large, or fail integrity checks" without defining a threshold. How should "unusually small/large" be determined? → A: Relative check — flag a file if its size deviates by more than 50% from the median size of the other landed months.
+- Q: When a monthly file fails to download, arrives corrupted, or fails the size-outlier check, what retry policy applies before it's flagged as incomplete? → A: Retry once automatically; if the retry also fails, flag as incomplete.
+- Q: Does validating network reachability (FR-001) require testing each of the 5 monthly URLs individually, or is one representative check enough? → A: One representative request against the shared NYC TLC domain; the result applies to all 5 months, since Free Edition's network policy is enforced at the domain level.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Validate environment constraints before designing ingestion (Priority: P1)
@@ -89,8 +97,8 @@ non-empty and readable.
    file-sets are present, none of them empty or corrupted.
 3. **Given** a monthly file fails to download or arrives corrupted,
    **When** ingestion completes, **Then** the failure is visible (not
-   silently skipped) and the month is retried or explicitly flagged as
-   incomplete.
+   silently skipped), the month is retried once automatically, and if the
+   retry also fails, the month is explicitly flagged as incomplete.
 
 ---
 
@@ -101,10 +109,12 @@ non-empty and readable.
   upload into the landing zone through the platform's own tooling) MUST
   be used and its use documented as a deliberate, justified deviation —
   not discovered and worked around silently.
-- If a monthly file is unusually small, unusually large, or fails
-  integrity checks, it MUST be flagged and retried rather than accepted
-  as-is or silently dropped — an incomplete raw dataset would
-  invalidate every downstream profiling/quality conclusion.
+- If a monthly file's size deviates by more than 50% from the median size
+  of the other landed months, or the file fails integrity checks, it MUST
+  be retried once automatically; if the retry also fails, it MUST be
+  explicitly flagged as incomplete rather than accepted as-is or silently
+  dropped — an incomplete raw dataset would invalidate every downstream
+  profiling/quality conclusion.
 - Environment dormancy (the workspace risking deactivation from prolonged
   inactivity) is an operational reminder tracked in project decisions, not
   an acceptance condition of this feature.
@@ -115,7 +125,10 @@ non-empty and readable.
 
 - **FR-001**: The environment MUST be validated for outbound network
   access to the NYC TLC data source before the ingestion approach is
-  finalized, and the result (reachable or not) MUST be documented.
+  finalized, and the result (reachable or not) MUST be documented. A
+  single representative request against the shared NYC TLC domain is
+  sufficient to determine reachability for all 5 monthly files — Free
+  Edition's network policy is enforced at the domain level, not per file.
 - **FR-002**: If direct access is unavailable, a fallback ingestion path
   MUST be used instead, and its use MUST be documented as a deliberate,
   justified deviation from the direct-download approach.
@@ -125,8 +138,10 @@ non-empty and readable.
 - **FR-004**: The five months of Yellow Taxi trip record files for
   January-May 2023 MUST be landed in the landing zone, unmodified from
   their original source format.
-- **FR-005**: Each landed file MUST be verified as non-empty and readable
-  before ingestion for that month is considered complete.
+- **FR-005**: Each landed file MUST be verified as non-empty, readable, and
+  not a size outlier (size MUST NOT deviate by more than 50% from the
+  median size of the other four landed months) before ingestion for that
+  month is considered complete.
 - **FR-006**: The landing zone MUST NOT contain any transformed, cleaned,
   or retyped data — only files exactly as received, consistent with the
   project's bronze-layer definition.
@@ -134,6 +149,10 @@ non-empty and readable.
   (compute type, warehouse size, network restrictions, or any other
   Free-Edition limitation) MUST be documented together with how each was
   resolved.
+- **FR-008**: If a monthly file fails to download, arrives corrupted, or
+  fails the size-outlier check (FR-005), ingestion MUST automatically
+  retry that month once; if the retry also fails, the month MUST be
+  explicitly flagged as incomplete rather than silently dropped.
 
 ### Key Entities
 
