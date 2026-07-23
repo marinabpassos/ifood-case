@@ -42,3 +42,8 @@
   is deferred to `/speckit-plan` as a technology choice, not decided here.
 - All items pass on first validation pass — no spec updates required
   before `/speckit-clarify` or `/speckit-plan`.
+- 2026-07-23 update (pre-`/speckit-plan`, user feedback): added User
+  Story 4 / FR-006 / SC-005 for a chart image per question, additive to
+  the plain-SQL path (FR-004 unchanged) so a business user can still
+  query directly without needing a notebook or chart. Re-validated: all
+  16 items still pass.

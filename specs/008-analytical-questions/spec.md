@@ -104,6 +104,39 @@ readable there.
 
 ---
 
+### User Story 4 - Results are readable as a chart, not just a table of numbers (Priority: P4)
+
+As a business stakeholder reviewing the case (not necessarily
+comfortable reading a raw numeric table), I need each answer presented
+as a visual chart in addition to the plain numbers, so trends across
+months/hours are obvious at a glance — while still being able to run the
+underlying SQL directly myself if I prefer numbers over pictures.
+
+**Why this priority**: Directly serves "clareza na comunicação dos
+resultados," one of the case's own stated evaluation criteria — but it's
+additive to User Stories 1-3 (the numeric answers already satisfy the
+case brief's literal requirement on their own), so it's sequenced last.
+
+**Independent Test**: Open `analysis/` and confirm a chart image exists
+for each question, independent of whether anyone runs the SQL.
+
+**Acceptance Scenarios**:
+
+1. **Given** both questions' results are computed, **When** they are
+   delivered, **Then** each also has a saved chart image (e.g., a bar
+   chart of average `total_amount` by month; a bar or line chart of
+   average `passenger_count` by hour) — viewable directly in the
+   repository, with no need to open Databricks or re-run anything to see
+   it.
+2. **Given** a business user prefers to query the data directly instead
+   of looking at a chart, **When** they open the plain `.sql` file for
+   either question, **Then** it runs standalone against
+   `ifood_case.silver.yellow_taxi_trips` with no dependency on the chart
+   or notebook — the raw-SQL path from User Story 3 is not replaced by
+   this story, only complemented.
+
+---
+
 ### Edge Cases
 
 - If a given hour of the day in May has zero trips (unlikely at this
@@ -141,13 +174,20 @@ readable there.
 - **FR-005**: This feature MUST NOT modify
   `ifood_case.silver.yellow_taxi_trips`, its contract, or any upstream
   pipeline (features 002-007) — it is read-only analysis.
+- **FR-006**: Each question's result MUST also be delivered as a saved
+  chart image in `analysis/`, in addition to the raw SQL and the
+  tabular numbers (FR-004) — the chart is an additional presentation of
+  the same result, not a replacement for the plain-SQL path (FR-004
+  still applies unchanged; a business user who prefers SQL over a chart
+  is never blocked from that).
 
 ### Key Entities
 
 - **Analytical Answer**: one per question — the question text, the
-  query that answers it, the actual computed result rows, and when it
-  was computed. Two instances: monthly average `total_amount` (5 rows),
-  hourly average `passenger_count` for May (24 rows).
+  query that answers it, the actual computed result rows, a chart image
+  representing those rows, and when it was computed. Two instances:
+  monthly average `total_amount` (5 rows), hourly average
+  `passenger_count` for May (24 rows).
 
 ## Success Criteria *(mandatory)*
 
@@ -166,6 +206,9 @@ readable there.
   cleaning/filtering beyond what the silver table already guarantees —
   validating feature 006's own promise (its SC-004) that silver is
   analysis-ready as-is.
+- **SC-005**: A reader can see each answer as a chart image in
+  `analysis/` without opening Databricks, running any code, or
+  configuring a visualization themselves.
 
 ## Assumptions
 
@@ -183,4 +226,12 @@ readable there.
 - Whether the deliverable format is SQL or structured PySpark (the case
   brief allows either) is a planning-phase decision, not a business
   requirement — this spec stays technology-agnostic per Spec Kit
-  convention.
+  convention. In practice this means both exist side by side: a
+  PySpark/notebook path that also produces the chart (FR-006), and a
+  plain, standalone `.sql` file per question that a business user can
+  run directly with no notebook or chart involved (FR-004) — one
+  doesn't replace the other.
+- Chart type (FR-006) is left as an implementation choice (e.g., bar
+  chart for both questions is a reasonable default) — the business
+  requirement is "visually readable at a glance," not a specific chart
+  library or format.
