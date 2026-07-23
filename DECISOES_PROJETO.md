@@ -32,6 +32,71 @@ Construir uma solução de engenharia de dados que:
     é apenas conta ficar deletada por **inatividade prolongada** — reabrir o
     workspace de vez em quando até a apresentação do case
 
+### 2.1 Validação de conectividade de rede (feature 002, 2026-07-22)
+
+- **Resultado**: **acessível diretamente** (`reachable: true`, HTTP 200) ao
+  domínio `d37ci6vzurychx.cloudfront.net` (NYC TLC CloudFront), testado a
+  partir de dentro do workspace (não da máquina local).
+- **Método**: notebook `network_check.py` (`src/ingestion/network_check.py`)
+  importado para `/Workspace/Users/marinabpassos@gmail.com/ifood_case/` e
+  executado via `databricks jobs submit` (job one-off, compute serverless
+  padrão da Free Edition) — não via cluster local nem download na máquina
+  do case author. Uma única requisição representativa (mês 2023-01) foi
+  usada para validar o domínio inteiro, já que a política de rede da Free
+  Edition é aplicada por domínio, não por arquivo (spec 002, FR-001).
+- **Decisão**: usar o caminho de ingestão **direto** (download via notebook
+  dentro do workspace) para os 5 meses — o plano B (download local +
+  upload via CLI) descrito acima **não foi necessário**.
+
+### 2.2 Provisionamento do catalog/schema/volume (feature 002, 2026-07-22)
+
+- **Restrição encontrada**: `databricks catalogs create ifood_case` via CLI
+  falhou com "Metastore storage root URL does not exist" — a Free Edition
+  usa o modelo de Default Storage e a chamada REST direta exige uma
+  managed location explícita para criar um catalog novo.
+- **Como foi resolvida**: `CREATE CATALOG IF NOT EXISTS ifood_case` via
+  Spark SQL, executado dentro de um notebook/job (não da CLI local),
+  funcionou sem exigir location explícita — o runtime do notebook resolve
+  a Default Storage automaticamente. Resultado: o catalog dedicado
+  `ifood_case` (não o catalog `workspace` de fallback) pôde ser usado como
+  planejado.
+- **Landing zone final**: `ifood_case.bronze.yellow_taxi_raw` →
+  `/Volumes/ifood_case/bronze/yellow_taxi_raw/`, criado por
+  `src/ingestion/landing_zone.py` e confirmado listável via
+  `databricks volumes list ifood_case bronze`.
+- **Nota**: uma tentativa inicial via CLI (`databricks schemas/volumes
+  create` sob o catalog `workspace`) criou uma localização paralela
+  (`workspace.ifood_case_bronze.yellow_taxi_raw`) antes de se descobrir o
+  caminho acima — essa localização foi removida (`databricks volumes/
+  schemas delete`) para não deixar ambiguidade sobre qual é "a" landing
+  zone (spec 002, FR-003).
+
+### 2.3 Landing dos 5 arquivos mensais (feature 002, 2026-07-22)
+
+- **Resultado**: os 5 meses (Jan-Mai/2023) foram baixados diretamente do
+  NYC TLC CloudFront para `/Volumes/ifood_case/bronze/yellow_taxi_raw/`
+  via `src/ingestion/land_files.py`, executado como job em compute
+  serverless. Todos os 5 meses passaram na verificação (`verified`) já na
+  primeira tentativa — a lógica de retry (FR-008) não precisou ser
+  acionada.
+- **Verificação (FR-005/SC-002/SC-004)**: cada arquivo teve tamanho não
+  vazio, leitura via Spark bem-sucedida (smoke-read), e nenhum foi
+  outlier de tamanho (todos entre ~47MB e ~59MB, bem dentro da tolerância
+  de 50% em relação à mediana dos outros meses). O tamanho de cada
+  arquivo landado bate **byte a byte** com o `Content-Length` HTTP da
+  fonte original — confirma que nenhuma transformação ocorreu (SC-004):
+
+  | Mês | Tamanho (bytes) | Status |
+  |---|---|---|
+  | 2023-01 | 47.673.370 | verified |
+  | 2023-02 | 47.748.012 | verified |
+  | 2023-03 | 56.127.762 | verified |
+  | 2023-04 | 54.222.699 | verified |
+  | 2023-05 | 58.654.627 | verified |
+
+- **Nenhuma restrição adicional da Free Edition** foi encontrada durante o
+  download/landing além das já registradas em 2.1/2.2.
+
 ## 3. Arquitetura de dados
 
 Modelo em camadas (medalhão simplificado):
