@@ -133,6 +133,42 @@ escopo. Considerado e descartado — ver design doc acima.
 - Metadados/catálogo: **Unity Catalog** (nativo da Free Edition)
 - Consumo final: **SQL** via Databricks SQL Warehouse
 
+### 3.1 Execução da feature 004 — Camada Bronze (2026-07-23)
+
+- **Rename de schema via Unity Catalog**: confirmado (documentação
+  Databricks) que **não existe** `ALTER SCHEMA ... RENAME TO` em nenhuma
+  camada do Unity Catalog — não é uma restrição específica da Free
+  Edition. O "rename" de `ifood_case.bronze` → `ifood_case.landing` foi
+  implementado como create-new + copy + verify + drop-old
+  (`src/bronze/rename_landing_schema.py`), rodado via
+  `databricks jobs submit` em compute serverless. Resultado: os 5 arquivos
+  ficaram byte-a-byte idênticos aos tamanhos originais da feature 002 na
+  nova localização, e o schema `bronze` antigo só foi apagado depois da
+  verificação passar (SC-001 da spec 004).
+- **Duas falhas encontradas e corrigidas na primeira execução real de
+  `ingest_bronze.py`** (evidência concreta de por que a etapa de
+  implementação, não só o planejamento, importa):
+  1. `input_file_name()` **não é suportado** em compute governado por
+     Unity Catalog (`UC_COMMAND_NOT_SUPPORTED.WITH_RECOMMENDATION`) —
+     corrigido usando a coluna oculta `_metadata.file_name`, a alternativa
+     recomendada pelo próprio erro do Databricks.
+  2. O schema `ifood_case.bronze` havia sido apagado pelo passo anterior
+     (correto, pois era a *landing zone antiga*) mas nada recriava esse
+     schema para a *nova tabela bronze* — `SCHEMA_NOT_FOUND` ao escrever.
+     Corrigido adicionando `CREATE SCHEMA IF NOT EXISTS ifood_case.bronze`
+     antes da escrita da tabela.
+- **Resultado final** (`specs/004-bronze-layer/ingestion-log.md`):
+  `ifood_case.bronze.yellow_taxi_trips` criada com 16.186.386 linhas
+  (idêntico ao total da feature 003), 0 duplicatas removidas (idêntico ao
+  achado da feature 003), schema consistente (`passenger_count`/
+  `RatecodeID` como `int` em todos os meses). As 3 condições de
+  data-quality com baseline da feature 003 (`total_amount<=0`,
+  `passenger_count` nulo/zero, datas fora do range) bateram **exatamente**
+  quando reconferidas na bronze — prova de que nenhuma regra de negócio
+  filtrou dados nessa camada (Princípio VI). A condição `dropoff` antes de
+  `pickup` (sem baseline na feature 003 — achado do `/speckit-analyze` da
+  004) foi medida pela primeira vez: 795 linhas no total.
+
 ## 4. Perguntas analíticas a responder
 
 1. Qual a média de valor total (`total_amount`) recebido em um mês,

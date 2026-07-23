@@ -14,9 +14,10 @@ Implements spec 004's FR-002 through FR-008 (User Stories 2-4):
 - FR-002 (US2): unions all 5 months with `allowMissingColumns=False`
   (research.md, decision 3) -- no column is expected to be missing.
 - FR-004 (US2): adds `_source_file` (captured per month, before the union,
-  since `input_file_name()` only resolves correctly pre-shuffle) and a
-  single `_ingested_at` value for the whole batch (research.md, decision
-  4).
+  via the `_metadata.file_name` hidden column -- `input_file_name()` is
+  not supported on Unity Catalog-governed compute, confirmed at runtime)
+  and a single `_ingested_at` value for the whole batch (research.md,
+  decision 4).
 - FR-005 (US3): deduplicates on the original source columns only, via an
   explicit `subset`, so the two metadata columns can never mask a real
   duplicate (research.md, decision 4).
@@ -94,7 +95,10 @@ def assert_known_schema(schemas_by_month: dict) -> None:
 
 def read_month(spark, month: str):
     df = spark.read.parquet(file_path(month))
-    df = df.withColumn("_source_file", F.input_file_name())
+    # input_file_name() is not supported on Unity Catalog-governed compute
+    # (UC_COMMAND_NOT_SUPPORTED.WITH_RECOMMENDATION, confirmed at runtime) --
+    # the hidden _metadata.file_name column is the supported equivalent.
+    df = df.withColumn("_source_file", F.col("_metadata.file_name"))
     for column in KNOWN_DRIFTED_COLUMNS:
         matches = [f.name for f in df.schema if f.name.lower() == column]
         if matches:
@@ -115,12 +119,19 @@ def combine_months(spark):
     return combined.withColumn("_ingested_at", F.current_timestamp())
 
 
-def dedup_and_write(combined) -> dict:
+def dedup_and_write(spark, combined) -> dict:
     original_columns = [c for c in combined.columns if c not in ("_source_file", "_ingested_at")]
     rows_read = combined.count()
     deduped = combined.dropDuplicates(subset=original_columns)
     rows_written = deduped.count()
 
+    # The old ifood_case.bronze schema (feature 002's landing-zone volume)
+    # was dropped by rename_landing_schema.py -- this is the new bronze
+    # schema, created fresh to hold the Delta table.
+    spark.sql(
+        f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.{BRONZE_SCHEMA} "
+        "COMMENT 'iFood case bronze schema - Delta table, schema-normalized ingestion from landing, no business rules'"
+    )
     deduped.write.format("delta").mode("overwrite").saveAsTable(
         f"{CATALOG}.{BRONZE_SCHEMA}.{TABLE}"
     )
@@ -138,7 +149,7 @@ def ingest_bronze(spark) -> dict:
     except ValueError as exc:
         return {"schema_validation_status": "failed", "error": str(exc)}
 
-    result = dedup_and_write(combined)
+    result = dedup_and_write(spark, combined)
     result["schema_validation_status"] = "pass"
     return result
 

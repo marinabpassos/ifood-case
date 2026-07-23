@@ -22,7 +22,7 @@ rules are feature 006's job, against feature 005's contract.
 002-003, no new dependency)
 
 **Primary Dependencies**: PySpark (`spark.read.parquet`, `.withColumn`/
-`.cast`, `input_file_name()`, `current_timestamp()`, `.dropDuplicates()`,
+`.cast`, `_metadata.file_name`, `current_timestamp()`, `.dropDuplicates()`,
 `unionByName`), Delta Lake (`.write.format("delta").saveAsTable(...)`) —
 both already fixed in `requirements.txt`. Unity Catalog DDL (`CREATE
 SCHEMA`, `CREATE VOLUME`) via Spark SQL, same as feature 002's

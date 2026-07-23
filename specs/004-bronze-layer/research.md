@@ -76,35 +76,37 @@ into an implementable design.
 
 ## 4. Ingestion metadata columns and duplicate detection (FR-004, FR-005)
 
-- **Decision**: Add `_source_file` via `pyspark.sql.functions.input_file_name()`
-  immediately after reading each month (i.e. before the union) — this
-  function only resolves reliably when evaluated close to the file read,
-  before any shuffle. Add `_ingested_at` via a single `current_timestamp()`
-  value applied once to the whole batch. Then run
-  `.dropDuplicates(subset=<original_source_columns>)` on the unioned
-  DataFrame, **explicitly excluding** `_source_file` and `_ingested_at`
-  from the subset. Report `rows_before_dedup - rows_after_dedup` as the
-  removed-duplicate count.
-- **Rationale**: An earlier draft of this decision assumed
-  `_source_file`/`_ingested_at` had to be added *after* dedup to avoid
-  breaking duplicate detection — but `input_file_name()` must actually be
-  captured *before* the union/dedup shuffle to resolve correctly at all
-  (Spark loses the per-partition file context after a shuffle, and would
-  otherwise return an empty string for every row). Reconciling both
-  constraints: add both metadata columns early (correct for
-  `input_file_name()`), but pass an explicit `subset` of only the original
-  source columns to `dropDuplicates()`, so the metadata columns can't
-  accidentally make every row look unique. This is the only ordering that
-  is both technically correct and satisfies FR-005's "full-row duplicate"
-  definition from feature 003 (0 found per month).
-- **Alternatives considered**: Adding metadata columns after dedup (no
-  `subset` needed) — rejected once we confirmed `input_file_name()`
-  requires evaluation before the union's shuffle to stay accurate.
-  Deduplicating per-month before the union — equivalent result for this
-  dataset (0 duplicates found per month in feature 003) but rejected as an
-  unnecessary extra pass when one `dropDuplicates(subset=...)` over the
-  combined DataFrame covers both intra- and cross-file duplicates in one
-  step.
+- **Decision**: Add `_source_file` via the hidden `_metadata.file_name`
+  column (`F.col("_metadata.file_name")`), captured immediately after
+  reading each month (i.e. before the union). Add `_ingested_at` via a
+  single `current_timestamp()` value applied once to the whole batch.
+  Then run `.dropDuplicates(subset=<original_source_columns>)` on the
+  unioned DataFrame, **explicitly excluding** `_source_file` and
+  `_ingested_at` from the subset. Report
+  `rows_before_dedup - rows_after_dedup` as the removed-duplicate count.
+- **Rationale**: The original plan here was `pyspark.sql.functions.input_file_name()`,
+  reasoned (in an earlier draft of this decision) to require capture
+  *before* any shuffle to resolve correctly. That reasoning turned out to
+  be moot: running the actual ingestion job against this workspace's
+  Unity Catalog-governed serverless compute failed outright with
+  `UC_COMMAND_NOT_SUPPORTED.WITH_RECOMMENDATION: The command(s):
+  input_file_name are not supported in Unity Catalog. Please use
+  _metadata.file_path instead.` — `input_file_name()` isn't just an
+  ordering hazard here, it's unsupported entirely on this compute type.
+  Switched to the hidden `_metadata` file-metadata column (`file_name`
+  field), Databricks' supported replacement, which needs no special
+  positioning relative to the union/shuffle since it isn't an
+  execution-context function. The dedup ordering/`subset` reasoning
+  still holds regardless of which mechanism populates `_source_file`.
+- **Alternatives considered**: `_metadata.file_path` (full path) instead
+  of `_metadata.file_name` — rejected, spec/data-model define
+  `_source_file` as "originating file name," not a full Volume path, and
+  the path is redundant with the fixed base path already known. Adding
+  metadata columns after dedup (no `subset` needed) — rejected, same
+  reasoning as before: unnecessary reordering when `subset` already
+  isolates the dedup key cleanly. Deduplicating per-month before the
+  union — equivalent result for this dataset (0 duplicates found per
+  month in feature 003) but rejected as an unnecessary extra pass.
 
 ## 5. Where the ingestion run report is persisted (FR-007)
 
