@@ -8,6 +8,13 @@
 
 **Input**: User description: "feature 005 - Contrato de Dados da Silver: contracts/nyc_taxi_silver.yaml (schema, grão, regras de qualidade, SLA, versionamento) escrito antes do código de escrita da tabela (Constituição, Princípio II)"
 
+## Clarifications
+
+### Session 2026-07-23
+
+- Q: The 5 required columns don't guarantee lineage back to source files the way bronze's `_source_file`/`_ingested_at` do — should silver inherit those columns, have none, or add its own equivalent? → A: Drop bronze's inherited `_source_file`/`_ingested_at`, but add a new silver-specific `_silver_processed_at` timestamp column (own audit trail for the silver write, not carried over from bronze) — 6 columns total (5 required + 1 audit column).
+- Q: When a row fails more than one data-quality rule at once (e.g. negative `total_amount` AND an out-of-range date), should each rule's dropped-row count be independent (may overlap, sum can exceed total dropped) or mutually exclusive (each row attributed to exactly one rule by priority order)? → A: Independent — same approach feature 003's profiling already used (each defect reported in isolation, no arbitrary priority order invented). Total rows dropped (logical OR across all rules, no double-counting) is reported as a separate metric.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - A reader knows exactly what the silver table looks like before it exists (Priority: P1)
@@ -37,9 +44,11 @@ answer must be complete and unambiguous without consulting any other file.
    business description — no column is left implicit.
 2. **Given** the contract exists, **When** compared to the case brief's
    note that "demais colunas podem ser ignoradas," **Then** the contract
-   contains only these 5 columns — no bronze-layer passthrough column
-   (e.g. `trip_distance`, `PULocationID`) is carried into the silver
-   schema declaration.
+   contains only these 5 columns plus one silver-specific audit column
+   (`_silver_processed_at`) — no bronze-layer passthrough column (e.g.
+   `trip_distance`, `PULocationID`) and none of bronze's own metadata
+   columns (`_source_file`, `_ingested_at`) are carried into the silver
+   schema declaration (2026-07-23 clarification).
 
 ---
 
@@ -147,8 +156,12 @@ in isolation and confirm each is a concrete, non-vague statement (not
 - **FR-002**: The contract MUST declare an explicit column-level schema
   for exactly the 5 required columns (`VendorID`, `passenger_count`,
   `total_amount`, `tpep_pickup_datetime`, `tpep_dropoff_datetime`) — type,
-  nullability, and a one-line business description each. No other bronze
-  column is included.
+  nullability, and a one-line business description each — plus one new
+  silver-specific audit column, `_silver_processed_at` (timestamp,
+  non-nullable, own audit trail for the silver write). No bronze-layer
+  passthrough column and none of bronze's own metadata columns
+  (`_source_file`, `_ingested_at`) are inherited (2026-07-23
+  clarification).
 - **FR-003**: The contract MUST declare the table's grain ("one row = one
   trip event") and explicitly state that no formal uniqueness constraint
   is enforced on the 5-column silver schema alone (see Edge Cases).
@@ -157,7 +170,12 @@ in isolation and confirm each is a concrete, non-vague statement (not
   constitution: `total_amount` negative/zero, `passenger_count`
   null/zero, `tpep_dropoff_datetime` before `tpep_pickup_datetime`,
   out-of-range dates (outside Jan 1 - May 31, 2023), and duplicates
-  (already resolved at the bronze layer, per feature 004).
+  (already resolved at the bronze layer, per feature 004). Rows failing
+  more than one rule simultaneously MUST be counted independently under
+  each rule they fail (counts may overlap and their sum may exceed the
+  total rows dropped); the contract MUST also require a separate "total
+  rows dropped" metric (rows failing at least one rule, counted once
+  each, no double-counting) (2026-07-23 clarification).
 - **FR-005**: The contract MUST declare an update frequency/SLA,
   described as if the pipeline were recurring (e.g. monthly), even though
   the actual load for this case is a single Jan-May 2023 batch.
@@ -175,8 +193,10 @@ in isolation and confirm each is a concrete, non-vague statement (not
 ### Key Entities
 
 - **Silver Data Contract**: the declarative document itself — table
-  identity, the 5-column schema, grain declaration, the 5 data-quality
-  rule policies, SLA, and version/breaking-change policy. Lives at
+  identity, the 6-column schema (5 required business columns + 1
+  silver-specific audit column, `_silver_processed_at`), grain
+  declaration, the 5 data-quality rule policies, SLA, and
+  version/breaking-change policy. Lives at
   `contracts/nyc_taxi_silver.yaml`. Not a physical table — a specification
   for one.
 
@@ -186,11 +206,15 @@ in isolation and confirm each is a concrete, non-vague statement (not
 
 - **SC-001**: A reader can state the exact column list, type, and
   nullability of every silver column from the contract alone, with 100%
-  of the 5 required columns covered — no pipeline code needed.
+  of the 6 columns covered (5 required business columns + the
+  `_silver_processed_at` audit column) — no pipeline code needed.
 - **SC-002**: All 5 constitution-named data-quality risks (negative/zero
   `total_amount`, null/zero `passenger_count`, `dropoff` before `pickup`,
   out-of-range dates, duplicates) have an explicit, reasoned policy in
-  the contract — zero risks left undecided or implicit.
+  the contract — zero risks left undecided or implicit. The contract
+  distinguishes independent per-rule counts from the single "total rows
+  dropped" count, so a reader never has to guess whether the numbers are
+  meant to sum to the total.
 - **SC-003**: The contract declares a version and breaking-change policy
   specific enough that a reader can determine, for any hypothetical
   future schema change (e.g. "remove `VendorID`," "add `trip_distance`"),
@@ -230,3 +254,9 @@ in isolation and confirm each is a concrete, non-vague statement (not
 - SLA/update-frequency content is illustrative (this project's real load
   is one-time), per `DECISOES_PROJETO.md` §6's explicit instruction to
   document it "como se fosse recorrente."
+- **Breaking-change semver semantics** (FR-006): standard semantic
+  versioning applies — removing/renaming a column, narrowing a column's
+  type, or changing a data-quality rule's policy (e.g. drop → keep) is a
+  MAJOR change; adding a new optional column is MINOR; wording/description
+  -only edits are PATCH. This is a conventional default, not a
+  case-specific decision requiring clarification.

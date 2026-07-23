@@ -40,5 +40,6 @@
   `VendorID`, etc.) appear because they are the literal identity of the
   entity being specified (a data contract for a specific table), not an
   implementation-technique detail — consistent with features 002-004.
-- All items pass on first validation pass — no spec updates required
-  before `/speckit-clarify` or `/speckit-plan`.
+- All 16 items still pass after the 2026-07-23 `/speckit-clarify` session
+  (silver metadata-column decision and per-rule counting semantics) — no
+  new gaps introduced, ready for `/speckit-plan`.
