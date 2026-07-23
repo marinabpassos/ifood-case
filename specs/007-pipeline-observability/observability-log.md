@@ -78,18 +78,26 @@ source_table_full_name              | target_table_full_name
 ifood_case.bronze.yellow_taxi_trips | ifood_case.silver.yellow_taxi_trips
 ```
 
+Also visible in Catalog Explorer's lineage UI itself — see
+[`evidence/lineage-v1-bronze-silver.png`](evidence/lineage-v1-bronze-silver.png).
+
 **Volume-to-table half (landing → bronze)** — per research.md §5,
 `system.access.table_lineage` only tracks table-to-table edges (confirmed:
 bronze's own row in that table has an empty `source_table_full_name`,
 since its source is a Volume, not a table). This half of the chain is
-documented by Databricks as visible in Catalog Explorer's lineage graph
-UI instead. **This session has no browser/UI access**, so this half was
-not personally clicked through — it is documented here as the correct
-verification path (per Databricks' own lineage feature documentation and
-the empirically-confirmed table-only scope of the system table above),
-not as a visually-confirmed screenshot. A follow-up session with UI
-access should do this final click-through if a visual record is needed
-for the case presentation.
+visible in Catalog Explorer's lineage graph UI instead, and **was
+visually confirmed there** (screenshot captured 2026-07-23, by the case
+author, since this session has no browser access of its own): expanding
+`ifood_case.silver.yellow_taxi_trips`'s lineage graph one hop upstream
+of `ifood_case.bronze.yellow_taxi_trips` shows 5 `Volume` nodes, each
+labeled `yellow_taxi_raw` / `ifood_case.landing`
+(`/Volumes/ifood_case/landing/yellow_taxi_raw/...`) — one per monthly
+source file — all feeding into bronze, which in turn feeds silver. This
+completes the full `landing → bronze → silver` chain in a single native
+UI view, confirming SC-003 end-to-end with both native mechanisms (the
+queryable system table for the table-to-table half, the UI for the
+volume-to-table half). See
+[`evidence/lineage-v2-landing-bronze-silver.png`](evidence/lineage-v2-landing-bronze-silver.png).
 
 ## Files modified
 

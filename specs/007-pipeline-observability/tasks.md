@@ -83,7 +83,7 @@ Setup.
 ### Implementation for User Story 3
 
 - [X] T010 [US3] Run quickstart.md Step 4's `system.access.table_lineage` query for `ifood_case.silver.yellow_taxi_trips` and confirm `ifood_case.bronze.yellow_taxi_trips` appears as the source (spec Acceptance Scenario 1) — confirmed
-- [X] T011 [US3] Verify in Catalog Explorer's Lineage tab for `ifood_case.bronze.yellow_taxi_trips` that `ifood_case.landing.yellow_taxi_raw` appears as an upstream source (spec Acceptance Scenario 2 — UI-only, per research.md §5's platform constraint) — **not visually confirmed this session** (no browser/UI access available); documented instead via the empirically-confirmed fact that `table_lineage` has no source for bronze (consistent with a volume-based source) plus Databricks' own documented UI lineage behavior — see `observability-log.md` for the honest caveat and recommended follow-up
+- [X] T011 [US3] Verify in Catalog Explorer's Lineage tab for `ifood_case.bronze.yellow_taxi_trips` that `ifood_case.landing.yellow_taxi_raw` appears as an upstream source (spec Acceptance Scenario 2 — UI-only, per research.md §5's platform constraint) — **visually confirmed** via screenshot (case author, 2026-07-23): 5 `Volume` nodes (`yellow_taxi_raw` / `ifood_case.landing`, one per monthly file) feed into bronze, which feeds silver — full `landing → bronze → silver` chain visible in one Catalog Explorer view; see `observability-log.md`
 
 **Checkpoint**: Both lineage mechanisms verified — User Story 3 independently complete (spec SC-003).
 
