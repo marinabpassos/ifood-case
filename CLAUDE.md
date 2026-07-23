@@ -31,3 +31,17 @@ execução via `databricks jobs submit`, output via
 `databricks jobs get-run-output`) normalmente — é o mecanismo de execução
 usado por todas as features deste case (ver `research.md` de cada
 feature, seção "Execution mechanism").
+
+## Subir arquivos que não são notebook (ex.: contratos YAML) pro workspace
+
+`databricks workspace import` não é só pra notebooks — com
+`--format AUTO`, um arquivo `.yaml`/`.txt`/etc. sobe como `object_type:
+FILE` (não vira notebook), e pode ser lido normalmente via `open()`
+dentro de um script rodando no workspace (ex.: um script que carrega
+`contracts/nyc_taxi_silver.yaml` em runtime, feature 006). Confirmado
+funcionando na primeira tentativa:
+
+```powershell
+databricks workspace import /Workspace/Users/<you>/ifood_case/<nome>.yaml `
+  --file <caminho-local>/<nome>.yaml --format AUTO --overwrite --profile DEFAULT
+```

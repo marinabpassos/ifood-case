@@ -23,8 +23,8 @@ description: "Task list for Data Quality & Camada Silver"
 
 **Purpose**: Confirm Databricks access still works and create the package skeleton this feature's script lives in.
 
-- [ ] T001 [P] Create `src/silver/__init__.py` package skeleton per plan.md Project Structure
-- [ ] T002 Verify Databricks CLI/MCP authentication against the `~/.databrickscfg` `[DEFAULT]` profile still resolves to the workspace (reused from features 002-004; see `CLAUDE.md` for the PATH fix if needed) — prerequisite for every execution task below
+- [X] T001 [P] Create `src/silver/__init__.py` package skeleton per plan.md Project Structure
+- [X] T002 Verify Databricks CLI/MCP authentication against the `~/.databrickscfg` `[DEFAULT]` profile still resolves to the workspace (reused from features 002-004; see `CLAUDE.md` for the PATH fix if needed) — prerequisite for every execution task below
 
 **Checkpoint**: Databricks access confirmed and package skeleton exists.
 
@@ -36,8 +36,8 @@ description: "Task list for Data Quality & Camada Silver"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T003 Implement contract loading in `src/silver/build_silver.py`: parse `contracts/nyc_taxi_silver.yaml` via `PyYAML`, extracting table identity, the `columns` list, and the `quality_rules` list (research.md §1)
-- [ ] T004 Implement the schema-compatibility assertion in `build_silver.py`: reuse the `type_family()` classifier already established in `src/profiling/schema_check.py`/`src/bronze/ingest_bronze.py`, map each contract business type (`integer`→`integer`, `decimal`→`floating`, `timestamp`→`timestamp_or_date`) and confirm bronze's 5 business columns exist with a matching family; raise an exception and let the job fail if any column is missing or mismatched (FR-002, research.md §3) (depends on T003)
+- [X] T003 Implement contract loading in `src/silver/build_silver.py`: parse `contracts/nyc_taxi_silver.yaml` via `PyYAML`, extracting table identity, the `columns` list, and the `quality_rules` list (research.md §1) — the contract is uploaded alongside the script as a plain Workspace File (`databricks workspace import --format AUTO`, confirmed `object_type: FILE`) and read via `open()` at runtime; see `CLAUDE.md` for the reusable pattern
+- [X] T004 Implement the schema-compatibility assertion in `build_silver.py`: reuse the `type_family()` classifier already established in `src/profiling/schema_check.py`/`src/bronze/ingest_bronze.py`, map each contract business type (`integer`→`integer`, `decimal`→`floating`, `timestamp`→`timestamp_or_date`) and confirm bronze's 5 business columns exist with a matching family; raise an exception and let the job fail if any column is missing or mismatched (FR-002, research.md §3) (depends on T003)
 
 **Checkpoint**: Contract loaded, schema confirmed compatible (or the job fails loudly) — user story implementation can now begin.
 
@@ -53,9 +53,9 @@ description: "Task list for Data Quality & Camada Silver"
 
 ### Implementation for User Story 1
 
-- [ ] T005 [US1] Read `ifood_case.bronze.yellow_taxi_trips` and add one boolean column per drop rule to `build_silver.py`, each computed via `F.expr(rule["condition"])` from the loaded contract, evaluated against the full, unfiltered bronze DataFrame (FR-003, research.md §1-2) (depends on T004)
-- [ ] T006 [US1] Compute each rule's independent count (`df.filter(<rule column>).count()`) and the combined OR drop mask across all 4 rule columns; compute `total_dropped` as the count of rows matching the combined mask (FR-003, research.md §2) (depends on T005)
-- [ ] T007 [US1] Code-review confirmation: verify no duplicate-detection/removal logic was added anywhere in `build_silver.py` (FR-004) — silver inherits bronze's already-deduplicated input, per the contract's `duplicates: resolved_upstream` policy (depends on T006)
+- [X] T005 [US1] Read `ifood_case.bronze.yellow_taxi_trips` and add one boolean column per drop rule to `build_silver.py`, each computed via `F.expr(rule["condition"])` from the loaded contract, evaluated against the full, unfiltered bronze DataFrame (FR-003, research.md §1-2) (depends on T004)
+- [X] T006 [US1] Compute each rule's independent count (`df.filter(<rule column>).count()`) and the combined OR drop mask across all 4 rule columns; compute `total_dropped` as the count of rows matching the combined mask (FR-003, research.md §2) (depends on T005)
+- [X] T007 [US1] Code-review confirmation: verify no duplicate-detection/removal logic was added anywhere in `build_silver.py` (FR-004) — silver inherits bronze's already-deduplicated input, per the contract's `duplicates: resolved_upstream` policy (depends on T006)
 
 **Checkpoint**: Independent per-rule counts and the combined drop mask are implemented — User Story 1's core logic exists (verified against real data at Polish's job run, spec SC-001).
 
@@ -71,8 +71,8 @@ description: "Task list for Data Quality & Camada Silver"
 
 ### Implementation for User Story 2
 
-- [ ] T008 [US2] Apply the combined drop mask from T006 (keep rows failing none of the 4 rules), select exactly the 5 business columns, and add `_silver_processed_at` (a single `current_timestamp()` value shared by the whole batch, research.md §5) to `build_silver.py` (FR-005/FR-006) (depends on T006)
-- [ ] T009 [US2] Add `CREATE SCHEMA IF NOT EXISTS ifood_case.silver` immediately before the table write in `build_silver.py` (research.md §4 — proactively avoids the `SCHEMA_NOT_FOUND` bug hit during feature 004), then write the managed Delta table `ifood_case.silver.yellow_taxi_trips` (FR-006) (depends on T008)
+- [X] T008 [US2] Apply the combined drop mask from T006 (keep rows failing none of the 4 rules), select exactly the 5 business columns, and add `_silver_processed_at` (a single `current_timestamp()` value shared by the whole batch, research.md §5) to `build_silver.py` (FR-005/FR-006) (depends on T006)
+- [X] T009 [US2] Add `CREATE SCHEMA IF NOT EXISTS ifood_case.silver` immediately before the table write in `build_silver.py` (research.md §4 — proactively avoids the `SCHEMA_NOT_FOUND` bug hit during feature 004), then write the managed Delta table `ifood_case.silver.yellow_taxi_trips` (FR-006) (depends on T008)
 
 **Checkpoint**: Silver table write logic complete, producing exactly the contract's 6-column schema — User Story 2's core logic exists (verified at Polish, spec SC-002).
 
@@ -88,7 +88,7 @@ description: "Task list for Data Quality & Camada Silver"
 
 ### Implementation for User Story 3
 
-- [ ] T010 [US3] Implement the final report dict in `build_silver.py`: `rows_read`, `rows_written`, the 4 named per-rule counts (`total_amount_negative_or_zero_count`, `passenger_count_null_or_zero_count`, `dropoff_before_pickup_count`, `out_of_range_dates_count`), `total_dropped`, `schema_assertion_status`, per data-model.md "Silver Data Quality Run" (FR-007) (depends on T009)
+- [X] T010 [US3] Implement the final report dict in `build_silver.py`: `rows_read`, `rows_written`, the 4 named per-rule counts (`total_amount_negative_or_zero_count`, `passenger_count_null_or_zero_count`, `dropoff_before_pickup_count`, `out_of_range_dates_count`), `total_dropped`, `schema_assertion_status`, per data-model.md "Silver Data Quality Run" (FR-007) (depends on T009)
 
 **Checkpoint**: Full report implemented — all 3 user stories' logic exists in `build_silver.py` (spec SC-003 verified at Polish).
 
@@ -98,13 +98,13 @@ description: "Task list for Data Quality & Camada Silver"
 
 **Purpose**: Run the completed script against the real workspace, verify all 3 stories against real data, and record the evidence.
 
-- [ ] T011 Upload `build_silver.py` to the workspace and run it via `databricks jobs submit` on serverless compute (depends on T010)
-- [ ] T012 Review the run output: confirm `schema_assertion_status: "pass"` and record `rows_read`/`rows_written`/the 4 per-rule counts/`total_dropped` (depends on T011)
-- [ ] T013 Run quickstart.md Steps 2-3 (SQL guardrail queries + `DESCRIBE TABLE`) against `ifood_case.silver.yellow_taxi_trips` and confirm all 4 guardrail queries return 0 and the schema matches the contract's 6 columns (SC-001/SC-002) (depends on T012)
-- [ ] T014 Run quickstart.md Step 4: compare the 4 independent counts from T012 against feature 004's `ingestion-log.md` baseline (144,146 / 702,146 / 795 / 1,077) and confirm an exact match (SC-003) (depends on T012)
-- [ ] T015 [P] Write `specs/006-silver-data-quality/dq-run-log.md` from T012's JSON output plus T013/T014's verification results (research.md §6) (depends on T013, T014)
-- [ ] T016 [P] Confirm `contracts/nyc_taxi_silver.yaml` has no diff introduced by this feature's implementation (`git diff contracts/nyc_taxi_silver.yaml` clean) — this feature implements the already-decided contract, it does not redecide it (FR-008)
-- [ ] T017 [P] Run quickstart.md Step 5: a sample `GROUP BY` aggregation directly against `ifood_case.silver.yellow_taxi_trips` with no extra cleaning clause, confirming the table is analysis-ready (SC-004) (depends on T013)
+- [X] T011 Upload `build_silver.py` to the workspace and run it via `databricks jobs submit` on serverless compute (depends on T010) — run 1083792319793578, SUCCESS on the first attempt, 57s execution
+- [X] T012 Review the run output: confirm `schema_assertion_status: "pass"` and record `rows_read`/`rows_written`/the 4 per-rule counts/`total_dropped` (depends on T011) — confirmed: `{"rows_read": 16186386, "rows_written": 15339417, "total_amount_negative_or_zero_count": 144146, "passenger_count_null_or_zero_count": 702146, "dropoff_before_pickup_count": 795, "out_of_range_dates_count": 1077, "total_dropped": 846969, "schema_assertion_status": "pass"}`
+- [X] T013 Run quickstart.md Steps 2-3 (SQL guardrail queries + `DESCRIBE TABLE`) against `ifood_case.silver.yellow_taxi_trips` and confirm all 4 guardrail queries return 0 and the schema matches the contract's 6 columns (SC-001/SC-002) (depends on T012) — confirmed: all 4 queries returned 0; `DESCRIBE TABLE` shows exactly `VendorID`/`passenger_count`/`total_amount`/`tpep_pickup_datetime`/`tpep_dropoff_datetime`/`_silver_processed_at`
+- [X] T014 Run quickstart.md Step 4: compare the 4 independent counts from T012 against feature 004's `ingestion-log.md` baseline (144,146 / 702,146 / 795 / 1,077) and confirm an exact match (SC-003) (depends on T012) — confirmed exact match on all 4
+- [X] T015 [P] Write `specs/006-silver-data-quality/dq-run-log.md` from T012's JSON output plus T013/T014's verification results (research.md §6) (depends on T013, T014)
+- [X] T016 [P] Confirm `contracts/nyc_taxi_silver.yaml` has no diff introduced by this feature's implementation (`git diff contracts/nyc_taxi_silver.yaml` clean) — this feature implements the already-decided contract, it does not redecide it (FR-008) — confirmed clean
+- [X] T017 [P] Run quickstart.md Step 5: a sample `GROUP BY` aggregation directly against `ifood_case.silver.yellow_taxi_trips` with no extra cleaning clause, confirming the table is analysis-ready (SC-004) (depends on T013) — confirmed: avg `total_amount` by month (27.46/27.37/28.29/28.78/29.45), consistent with feature 003's profiling means
 
 ---
 
