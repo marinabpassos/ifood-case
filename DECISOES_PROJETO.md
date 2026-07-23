@@ -99,18 +99,33 @@ Construir uma solução de engenharia de dados que:
 
 ## 3. Arquitetura de dados
 
-Modelo em camadas (medalhão simplificado):
+Modelo em camadas (medalhão simplificado), definido/revisado na sessão de
+brainstorming de 2026-07-23 (ver
+`docs/superpowers/specs/2026-07-23-medallion-layering-design.md`):
 
-1. **Landing zone / bronze**: arquivos parquet originais, como chegaram, em
-   Unity Catalog Volume (ou DBFS)
-2. **Camada de consumo / silver**: tabela Delta gerenciada, com as colunas
-   obrigatórias já tipadas e limpas:
+1. **Landing**: arquivos parquet originais, como chegaram, em Unity Catalog
+   Volume — `ifood_case.landing.yellow_taxi_raw` (renomeado do schema
+   `bronze` original, feature 002; a tabela em si não muda, só o
+   catalog/schema que a contém)
+2. **Bronze**: tabela Delta gerenciada (`ifood_case.bronze.yellow_taxi_trips`),
+   ingestão 1:1 da landing — cast de schema consistente (ex.: `passenger_count`
+   float/int entre meses, achado no profiling), colunas técnicas de ingestão
+   (`_source_file`, `_ingested_at`), e dedup de linhas 100% idênticas. **Sem**
+   regra de negócio — isso fica todo na silver.
+3. **Silver**: tabela Delta gerenciada (`ifood_case.silver.yellow_taxi_trips`),
+   lida a partir da bronze (não mais direto da landing), com as regras de
+   qualidade de negócio aplicadas e as colunas obrigatórias já tipadas e
+   limpas:
    - `VendorID`
    - `passenger_count`
    - `total_amount`
    - `tpep_pickup_datetime`
    - `tpep_dropoff_datetime`
    - (demais colunas do arquivo original podem ser ignoradas)
+
+**Sem camada gold/star schema**: as duas perguntas analíticas (seção 4) são
+agregações diretas sobre a silver; não há dimensões reais a modelar nesse
+escopo. Considerado e descartado — ver design doc acima.
 
 **Tecnologias fixadas:**
 - Processamento: **PySpark** (obrigatório pelo case)
@@ -289,17 +304,18 @@ ponto de ser só uma task isolada.
 
 | # | Feature | Escopo | Depende de |
 |---|---|---|---|
-| 002 | Ambiente & Landing Zone (Bronze) | Validar Free Edition (rede, serverless, warehouse), criar catalog/schema/volume no Unity Catalog, carregar os parquets Jan-Mai/2023 na landing zone | — |
-| 003 | Data Profiling (EDA sobre Bronze) | Volumetria por mês/arquivo, schema real vs. esperado, nulos e distribuição das colunas obrigatórias, estatísticas descritivas de `total_amount`/`passenger_count` | 002 |
-| 004 | Contrato de Dados da Silver | `contracts/nyc_taxi_silver.yaml` (schema, grão, regras de qualidade, SLA, versionamento) escrito **antes** do código de escrita da tabela (Constituição, Princípio II) | 003 |
-| 005 | Data Quality & Camada Silver | Aplica as regras de DQ definidas no profiling + o contrato (schema assert), escreve a tabela Delta silver tipada e limpa | 004 |
-| 006 | Observability da Pipeline | Tabela `_pipeline_run_log`, métricas de volume/schema por execução, lineage nativo do Unity Catalog, alerting por threshold | 005 |
-| 007 | Análises Analíticas | SQL/PySpark em `analysis/` respondendo as duas perguntas do case (média de `total_amount` por mês; média de `passenger_count` por hora em maio) | 005 |
-| 008 | Consumo & Diferencial | Genie Space (UI, produção) sobre a silver + protótipo do agente NL-to-SQL custom via Claude Code + MCP Databricks | 005 |
+| 002 | Ambiente & Landing Zone | Validar Free Edition (rede, serverless, warehouse), criar catalog/schema/volume no Unity Catalog, carregar os parquets Jan-Mai/2023 na landing zone | — |
+| 003 | Data Profiling (EDA sobre Landing) | Volumetria por mês/arquivo, schema real vs. esperado, nulos e distribuição das colunas obrigatórias, estatísticas descritivas de `total_amount`/`passenger_count` | 002 |
+| 004 | Camada Bronze | Renomear o schema `ifood_case.bronze` (feature 002) para `ifood_case.landing`; criar `ifood_case.bronze.yellow_taxi_trips` (Delta): ingestão 1:1, cast de schema, colunas técnicas de ingestão, dedup de linhas idênticas — sem regra de negócio | 003 |
+| 005 | Contrato de Dados da Silver | `contracts/nyc_taxi_silver.yaml` (schema, grão, regras de qualidade, SLA, versionamento) escrito **antes** do código de escrita da tabela (Constituição, Princípio II) | 004 |
+| 006 | Data Quality & Camada Silver | Aplica as regras de DQ definidas no profiling + o contrato (schema assert) sobre a bronze, escreve a tabela Delta silver tipada e limpa | 005 |
+| 007 | Observability da Pipeline | Tabela `_pipeline_run_log`, métricas de volume/schema por execução, lineage nativo do Unity Catalog (landing→bronze→silver), alerting por threshold | 006 |
+| 008 | Análises Analíticas | SQL/PySpark em `analysis/` respondendo as duas perguntas do case (média de `total_amount` por mês; média de `passenger_count` por hora em maio) | 006 |
+| 009 | Consumo & Diferencial | Genie Space (UI, produção) sobre a silver + protótipo do agente NL-to-SQL custom via Claude Code + MCP Databricks | 006 |
 
-**Ordem sugerida**: 002 → 003 → 004 → 005, depois 006 e 007 podem correr em
-paralelo (ambas dependem só de 005), 008 por último (ou a qualquer momento
-após 005, se o tempo permitir adiantar o diferencial).
+**Ordem sugerida**: 002 → 003 → 004 → 005 → 006, depois 007 e 008 podem
+correr em paralelo (ambas dependem só de 006), 009 por último (ou a qualquer
+momento após 006, se o tempo permitir adiantar o diferencial).
 
 Pendência solta, fora do fluxo de features (fazer antes de iniciar a 002):
 - [ ] Configurar conexão MCP do Databricks no Claude Code

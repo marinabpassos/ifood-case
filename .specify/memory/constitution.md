@@ -1,20 +1,28 @@
 <!--
 Sync Impact Report
 ===================
-Version change: [TEMPLATE] → 1.0.0 (initial ratification)
-Modified principles: N/A (first concrete version, template placeholders replaced)
-Added sections:
-  - Core Principles (I–VI)
-  - Technology Stack & Environment Constraints
-  - Development Workflow & Repository Structure
-  - Governance
-Removed sections: none (template placeholder text removed)
+Version change: 1.0.0 → 1.1.0
+Modified principles:
+  - III. Observability Is Part of the Deliverable — lineage phrase
+    "volume→bronze→silver" reworded to "landing→bronze→silver" to match the
+    Landing/Bronze/Silver terminology introduced by Principle VI's update
+    (no meaning change: "volume" always meant the landing-zone Volume).
+  - VI. Lean Instructions, Simple Architecture — minimum layering redefined
+    from two physical layers (landing/bronze merged, straight to silver) to
+    three (landing → bronze → silver), resolving the inconsistency where
+    Principle III already named bronze as a distinct lineage stage while
+    Principle VI described it as merged with landing. Still explicitly caps
+    the architecture at these three layers — no gold layer or star schema
+    added.
+Added sections: none
+Removed sections: none
 Templates requiring updates:
-  - .specify/templates/plan-template.md ✅ no change needed (Constitution Check gate is populated dynamically per-feature from this file)
-  - .specify/templates/spec-template.md ✅ no change needed (generic, technology-agnostic)
-  - .specify/templates/tasks-template.md ✅ no change needed (generic, technology-agnostic)
-  - .claude/skills/speckit-*/SKILL.md ✅ no agent-specific references found requiring change
-Follow-up TODOs: none
+  - .specify/templates/plan-template.md ✅ no change needed
+  - .specify/templates/spec-template.md ✅ no change needed
+  - .specify/templates/tasks-template.md ✅ no change needed
+Follow-up TODOs:
+  - Roadmap (DECISOES_PROJETO.md §13) updated in the same change: new
+    feature 004 "Camada Bronze" inserted, subsequent features renumbered.
 -->
 
 # iFood Data Architect Case — Constitution
@@ -61,7 +69,7 @@ alerts against the contract (Principle II), execution duration, and
 status (success/failure/partial). These MUST be persisted to a queryable
 metadata table (e.g. `_pipeline_run_log`) in the consumption layer, not just
 printed to notebook output. Native Unity Catalog lineage MUST be used for
-volume→bronze→silver lineage rather than rebuilt manually. A defined
+landing→bronze→silver lineage rather than rebuilt manually. A defined
 threshold (e.g. >1% of rows dropped by a single rule) MUST trigger a visible
 alert (structured log or notebook banner) even for a one-time load.
 
@@ -106,9 +114,14 @@ of what's being evaluated, not just its output.
 rules that need to be reliably enforced belong in skills, hooks, or this
 constitution, not in a growing prose file (adherence to instructions
 degrades as files grow). The data architecture MUST stay to the minimum
-medallion layering needed for this case (landing/bronze → silver); no gold
-layer, extra abstraction, or speculative generalization should be added
-unless a specific requirement in the spec calls for it.
+medallion layering needed for this case — three physical layers, no more:
+**landing** (raw files as landed, unmodified, in a Unity Catalog Volume),
+**bronze** (a Delta table: 1:1 ingestion of the landing files with schema
+normalization and technical deduplication only — no business-rule
+filtering), and **silver** (a Delta table: business data-quality rules
+applied, per Principle I, on top of bronze). No gold layer, star schema,
+extra abstraction, or speculative generalization should be added unless a
+specific requirement in the spec calls for it.
 
 **Rationale**: Both over-long instruction files and speculative architecture
 work against "qualidade e organização do código" by adding surface area that
@@ -159,4 +172,4 @@ Principles above before proceeding to the next phase. Complexity or
 deviation from Principle IV or VI MUST be justified in writing at the point
 it is introduced, not retroactively.
 
-**Version**: 1.0.0 | **Ratified**: 2026-07-22 | **Last Amended**: 2026-07-22
+**Version**: 1.1.0 | **Ratified**: 2026-07-22 | **Last Amended**: 2026-07-23
