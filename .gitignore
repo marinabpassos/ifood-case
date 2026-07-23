@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Landing local (plano B de ingestão — dados baixados manualmente)
+data/*
+!data/.gitkeep
+
+# Segredos / configuração local
+.env
+*.env.local
+.databrickscfg
+
+# Claude Code (config local, não versionada)
+.claude/settings.local.json
+
+# Enunciado do case (não versionado)
+Case_iFood_-_Data_Architecture__281_29.pdf
+
+# OS
+.DS_Store
+Thumbs.db

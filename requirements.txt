@@ -1,0 +1,10 @@
+# Processamento (obrigatório pelo case)
+pyspark>=3.5,<4.0
+delta-spark>=3.0,<4.0
+
+# Contratos de dados (parsing de YAML)
+pyyaml>=6.0
+
+# Adicionar quando necessário:
+# databricks-sdk       # integração com Unity Catalog / Databricks Jobs via API
+# ydata-profiling      # relatório de data profiling mais visual
