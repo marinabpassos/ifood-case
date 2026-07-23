@@ -23,7 +23,7 @@ description: "Task list for Observability da Pipeline"
 
 **Purpose**: Confirm Databricks access still works — no new package needed (plan.md: this feature modifies two existing scripts, adds none).
 
-- [ ] T001 Verify Databricks CLI/MCP authentication against the `~/.databrickscfg` `[DEFAULT]` profile still resolves to the workspace (reused from features 002-006; see `CLAUDE.md` for the PATH fix if needed)
+- [X] T001 Verify Databricks CLI/MCP authentication against the `~/.databrickscfg` `[DEFAULT]` profile still resolves to the workspace (reused from features 002-006; see `CLAUDE.md` for the PATH fix if needed)
 
 **Checkpoint**: Databricks access confirmed.
 
@@ -46,11 +46,11 @@ Setup.
 
 ### Implementation for User Story 1
 
-- [ ] T002 [US1] Define the log-row `StructType` (data-model.md "Pipeline Run Log Entry") and a `write_run_log(spark, entry: dict)` helper in `src/bronze/ingest_bronze.py`: builds a one-row DataFrame and appends it to `ifood_case.silver._pipeline_run_log` (`CREATE TABLE IF NOT EXISTS` semantics via `mode("append")`'s first-write behavior) (research.md §1)
-- [ ] T003 [US1] In `ingest_bronze.py`'s `__main__` block, capture a start timestamp, run the existing ingestion logic unchanged, then call `write_run_log()` with `pipeline_stage="bronze"`, the existing result dict's `schema_validation_status`/`rows_read`/`rows_written`, `metrics={"duplicates_removed": ...}`, and `duration_seconds` (FR-002) (depends on T002)
-- [ ] T004 [US1] [P] Define the same log-row `StructType` and `write_run_log()` helper in `src/silver/build_silver.py` (duplicated, not imported — research.md §2)
-- [ ] T005 [US1] In `build_silver.py`'s `__main__` block, capture a start timestamp, run the existing cleaning logic unchanged, then call `write_run_log()` with `pipeline_stage="silver"`, the existing result dict's `schema_assertion_status`/`rows_read`/`rows_written`, `metrics={"total_amount_negative_or_zero_count": ..., ...}`, and `duration_seconds` (FR-002) (depends on T004)
-- [ ] T006 [US1] Wrap each script's `__main__` block in a broad `try/except Exception` (research.md §3): on any exception not already caught inside `ingest_bronze()`/`build_silver()`, call `write_run_log()` with `status="failed"` and the error message, then re-raise so the Databricks job still reports FAILED (FR-003) (depends on T003, T005)
+- [X] T002 [US1] Define the log-row `StructType` (data-model.md "Pipeline Run Log Entry") and a `write_run_log(spark, entry: dict)` helper in `src/bronze/ingest_bronze.py`: builds a one-row DataFrame and appends it to `ifood_case.silver._pipeline_run_log` (`CREATE TABLE IF NOT EXISTS` semantics via `mode("append")`'s first-write behavior) (research.md §1)
+- [X] T003 [US1] In `ingest_bronze.py`'s `__main__` block, capture a start timestamp, run the existing ingestion logic unchanged, then call `write_run_log()` with `pipeline_stage="bronze"`, the existing result dict's `schema_validation_status`/`rows_read`/`rows_written`, `metrics={"duplicates_removed": ...}`, and `duration_seconds` (FR-002) (depends on T002)
+- [X] T004 [US1] [P] Define the same log-row `StructType` and `write_run_log()` helper in `src/silver/build_silver.py` (duplicated, not imported — research.md §2)
+- [X] T005 [US1] In `build_silver.py`'s `__main__` block, capture a start timestamp, run the existing cleaning logic unchanged, then call `write_run_log()` with `pipeline_stage="silver"`, the existing result dict's `schema_assertion_status`/`rows_read`/`rows_written`, `metrics={"total_amount_negative_or_zero_count": ..., ...}`, and `duration_seconds` (FR-002) (depends on T004)
+- [X] T006 [US1] Wrap each script's `__main__` block in a broad `try/except Exception` (research.md §3): on any exception not already caught inside `ingest_bronze()`/`build_silver()`, call `write_run_log()` with `status="failed"` and the error message, then re-raise so the Databricks job still reports FAILED (FR-003) (depends on T003, T005) — **bug found on first real run**: `dbutils.notebook.exit()` raises its own internal control-flow exception on success, which this broad catch also caught, logging a spurious "failed" row even though the job succeeded; fixed by moving `dbutils.notebook.exit()` outside the try/except in both scripts (see `observability-log.md`)
 
 **Checkpoint**: Both scripts write a log row on every execution, success or failure — User Story 1's core logic exists (verified against real data at Polish's re-runs, spec SC-001).
 
@@ -66,9 +66,9 @@ Setup.
 
 ### Implementation for User Story 2
 
-- [ ] T007 [US2] Implement a `check_alerts(metrics: dict, rows_read: int) -> list[str]` helper in `ingest_bronze.py`: for `duplicates_removed`, compute `count / rows_read`, append a message if `> 0.01` (research.md §4) (depends on T006)
-- [ ] T008 [US2] [P] Same `check_alerts()` helper in `build_silver.py`, applied to each of the 4 named rule counts (not `total_dropped`, which isn't a single rule) (research.md §4) (depends on T006)
-- [ ] T009 [US2] Wire `check_alerts()`'s return value into each script's `write_run_log()` call as the `alerts` field, and `print()` a clearly-marked banner for each triggered alert (FR-004) (depends on T007, T008)
+- [X] T007 [US2] Implement a `check_alerts(metrics: dict, rows_read: int) -> list[str]` helper in `ingest_bronze.py`: for `duplicates_removed`, compute `count / rows_read`, append a message if `> 0.01` (research.md §4) (depends on T006)
+- [X] T008 [US2] [P] Same `check_alerts()` helper in `build_silver.py`, applied to each of the 4 named rule counts (not `total_dropped`, which isn't a single rule) (research.md §4) (depends on T006)
+- [X] T009 [US2] Wire `check_alerts()`'s return value into each script's `write_run_log()` call as the `alerts` field, and `print()` a clearly-marked banner for each triggered alert (FR-004) (depends on T007, T008)
 
 **Checkpoint**: Alert logic implemented in both scripts — User Story 2's core logic exists (verified against real data at Polish, spec SC-002).
 
@@ -82,8 +82,8 @@ Setup.
 
 ### Implementation for User Story 3
 
-- [ ] T010 [US3] Run quickstart.md Step 4's `system.access.table_lineage` query for `ifood_case.silver.yellow_taxi_trips` and confirm `ifood_case.bronze.yellow_taxi_trips` appears as the source (spec Acceptance Scenario 1)
-- [ ] T011 [US3] Verify in Catalog Explorer's Lineage tab for `ifood_case.bronze.yellow_taxi_trips` that `ifood_case.landing.yellow_taxi_raw` appears as an upstream source (spec Acceptance Scenario 2 — UI-only, per research.md §5's platform constraint)
+- [X] T010 [US3] Run quickstart.md Step 4's `system.access.table_lineage` query for `ifood_case.silver.yellow_taxi_trips` and confirm `ifood_case.bronze.yellow_taxi_trips` appears as the source (spec Acceptance Scenario 1) — confirmed
+- [X] T011 [US3] Verify in Catalog Explorer's Lineage tab for `ifood_case.bronze.yellow_taxi_trips` that `ifood_case.landing.yellow_taxi_raw` appears as an upstream source (spec Acceptance Scenario 2 — UI-only, per research.md §5's platform constraint) — **not visually confirmed this session** (no browser/UI access available); documented instead via the empirically-confirmed fact that `table_lineage` has no source for bronze (consistent with a volume-based source) plus Databricks' own documented UI lineage behavior — see `observability-log.md` for the honest caveat and recommended follow-up
 
 **Checkpoint**: Both lineage mechanisms verified — User Story 3 independently complete (spec SC-003).
 
@@ -93,12 +93,12 @@ Setup.
 
 **Purpose**: Re-run both extended pipelines for real, verify all 3 stories against fresh execution evidence, and record findings.
 
-- [ ] T012 Upload `ingest_bronze.py` to the workspace and re-run it via `databricks jobs submit` on serverless compute (depends on T009)
-- [ ] T013 Upload `build_silver.py` to the workspace and re-run it via `databricks jobs submit` — **after** T012 completes, since silver reads from bronze (depends on T012, T009)
-- [ ] T014 Run quickstart.md Step 2: query `ifood_case.silver._pipeline_run_log` and confirm ≥2 rows (bronze + silver), all core fields populated (SC-001) (depends on T013)
-- [ ] T015 Run quickstart.md Step 3: confirm the silver run's `alerts` contains the `passenger_count_null_or_zero` entry and bronze's `alerts` is empty (SC-002) (depends on T013)
-- [ ] T016 Confirm the re-run's `rows_read`/`rows_written`/per-rule counts match feature 004's `ingestion-log.md` and feature 006's `dq-run-log.md` exactly (SC-004) (depends on T014)
-- [ ] T017 [P] Write `specs/007-pipeline-observability/observability-log.md` summarizing the run-log query results (T014-T016) and the lineage verification (T010-T011)
+- [X] T012 Upload `ingest_bronze.py` to the workspace and re-run it via `databricks jobs submit` on serverless compute (depends on T009) — 2 attempts: 1st SUCCESS but revealed the `dbutils.notebook.exit()` bug (T006 note); 2nd (post-fix) SUCCESS with correct single log row
+- [X] T013 Upload `build_silver.py` to the workspace and re-run it via `databricks jobs submit` — **after** T012 completes, since silver reads from bronze (depends on T012, T009) — SUCCESS on first attempt (fix already applied)
+- [X] T014 Run quickstart.md Step 2: query `ifood_case.silver._pipeline_run_log` and confirm ≥2 rows (bronze + silver), all core fields populated (SC-001) (depends on T013) — confirmed: 2 bronze rows + 1 silver row, all fields populated
+- [X] T015 Run quickstart.md Step 3: confirm the silver run's `alerts` contains the `passenger_count_null_or_zero` entry and bronze's `alerts` is empty (SC-002) (depends on T013) — confirmed: silver alerts = `["passenger_count_null_or_zero_count: 4.34% > 1% threshold"]`, bronze alerts = `[]`
+- [X] T016 Confirm the re-run's `rows_read`/`rows_written`/per-rule counts match feature 004's `ingestion-log.md` and feature 006's `dq-run-log.md` exactly (SC-004) (depends on T014) — confirmed exact match on all 7 metrics
+- [X] T017 [P] Write `specs/007-pipeline-observability/observability-log.md` summarizing the run-log query results (T014-T016) and the lineage verification (T010-T011)
 
 ---
 
