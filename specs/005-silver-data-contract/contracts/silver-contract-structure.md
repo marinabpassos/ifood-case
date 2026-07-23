@@ -46,6 +46,9 @@ the spec. Same role `profiling-findings-schema.md` played for feature
   `dropoff_before_pickup`, `out_of_range_dates`, `duplicates`. Each
   entry has:
   - `id`: one of the 5 names above.
+  - `condition`: non-empty string — the literal condition this rule
+    tests (e.g. `total_amount <= 0`), omitted only for the `duplicates`
+    entry (resolved upstream, no condition to state here).
   - `policy`: `drop` (4 of the 5 entries) or `resolved_upstream` (the
     `duplicates` entry only).
   - `counting`: `independent` for all 4 `drop` entries (2026-07-23
@@ -71,9 +74,11 @@ the spec. Same role `profiling-findings-schema.md` played for feature
 
 ## Guarantees this feature provides to consumers
 
-1. `contracts/nyc_taxi_silver.yaml` has all 7 top-level keys above, with
-   the exact list-length constraints on `columns` (6) and `quality_rules`
-   (5) — checkable by `validate_silver_contract.py` without connecting to
+1. `contracts/nyc_taxi_silver.yaml` has all **8** top-level keys —
+   `contract`, `table`, `grain`, `columns`, `quality_rules`,
+   `total_dropped_metric_note`, `sla`, `versioning` — with the exact
+   list-length constraints on `columns` (6) and `quality_rules` (5) —
+   checkable by `validate_silver_contract.py` without connecting to
    Databricks.
 2. Every column's nullability reflects the **post-cleaning** invariant
    (what silver guarantees once feature 006 applies the rules above),

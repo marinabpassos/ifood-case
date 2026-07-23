@@ -199,6 +199,10 @@ in isolation and confirm each is a concrete, non-vague statement (not
   version/breaking-change policy. Lives at
   `contracts/nyc_taxi_silver.yaml`. Not a physical table — a specification
   for one.
+- **Contract Validation Result**: the ephemeral output of running the
+  structural validator locally — whether the contract is structurally
+  complete, and which checks (if any) failed. Not persisted anywhere; no
+  pipeline execution to log (FR-008).
 
 ## Success Criteria *(mandatory)*
 

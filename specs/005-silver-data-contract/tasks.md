@@ -68,7 +68,7 @@ column names just declared.
 
 ### Implementation for User Story 2
 
-- [ ] T005 [US2] Add the `quality_rules` list (exactly 5 entries) to `contracts/nyc_taxi_silver.yaml`: `total_amount_negative_or_zero`, `passenger_count_null_or_zero`, `dropoff_before_pickup`, `out_of_range_dates` (all `policy: drop`, `counting: independent`), and `duplicates` (`policy: resolved_upstream`) — each with `id`/`policy`/`rationale` (`counting` on the 4 drop rules only) per FR-004, research.md §5, `contracts/silver-contract-structure.md` §5 (depends on T003)
+- [ ] T005 [US2] Add the `quality_rules` list (exactly 5 entries) to `contracts/nyc_taxi_silver.yaml`: `total_amount_negative_or_zero`, `passenger_count_null_or_zero`, `dropoff_before_pickup`, `out_of_range_dates` (all `policy: drop`, `counting: independent`), and `duplicates` (`policy: resolved_upstream`) — each with `id`/`condition`/`policy`/`rationale` (`condition` omitted only for `duplicates`; `counting` on the 4 drop rules only) per FR-004, research.md §5, `contracts/silver-contract-structure.md` §5 (depends on T003)
 - [ ] T006 [US2] Add the `total_dropped_metric_note` sibling key to `contracts/nyc_taxi_silver.yaml`, stating that "total rows dropped" (logical OR across the 4 drop rules, no double-counting) is a separate metric from the 4 independent per-rule counts (research.md §5, 2026-07-23 clarification) (depends on T005)
 - [ ] T007 [US2] Manually verify quickstart.md Step 2: all 5 rules have an explicit policy, the 4 drop rules are marked `independent`, and the total-dropped note is present and distinguishable from the per-rule counts (depends on T006)
 
@@ -101,7 +101,7 @@ note references the finalized 6-column set.
 
 **Purpose**: Build the structural validator over the now-complete contract and run final validation.
 
-- [ ] T012 Implement `src/contracts/validate_silver_contract.py`: load `contracts/nyc_taxi_silver.yaml`, assert all 7 top-level keys, the 6-entry `columns` list (with `name`/`type`/`nullable`/`description` each), the 5-entry `quality_rules` list (with `id`/`policy`/`rationale`, `counting` on drop rules), non-empty `sla`, and a `versioning.current_version` matching a `vN` pattern with a `breaking_change_policy` containing `major`/`minor`/`patch` — per research.md §2, `contracts/silver-contract-structure.md`, data-model.md "Contract Validation Result" (depends on T001, T004, T007, T011 — the contract must be fully written first)
+- [ ] T012 Implement `src/contracts/validate_silver_contract.py`: load `contracts/nyc_taxi_silver.yaml`, assert all 8 top-level keys (including `total_dropped_metric_note`), the 6-entry `columns` list (with `name`/`type`/`nullable`/`description` each), the 5-entry `quality_rules` list (with `id`/`condition`/`policy`/`rationale`, `counting` on drop rules), non-empty `sla`, and a `versioning.current_version` matching a `vN` pattern with a `breaking_change_policy` containing `major`/`minor`/`patch` — per research.md §2, `contracts/silver-contract-structure.md`, data-model.md "Contract Validation Result" (depends on T001, T004, T007, T011 — the contract must be fully written first)
 - [ ] T013 Run `python src/contracts/validate_silver_contract.py` (quickstart.md Step 3) and confirm `"structurally_valid": true` with an empty `missing_or_invalid` list (depends on T012)
 - [ ] T014 [P] Run `specs/005-silver-data-contract/quickstart.md` end-to-end (all 4 steps) as final validation of all three user stories together (depends on T013)
 
@@ -113,7 +113,7 @@ note references the finalized 6-column set.
 
 - **Setup (Phase 1)**: No dependencies — start immediately
 - **Foundational (Phase 2)**: None as a separate phase — see note above
-- **User Story 1 (Phase 3)**: Depends on Phase 1 (T001) only
+- **User Story 1 (Phase 3)**: No dependency on Setup — writing the YAML contract has nothing to do with the Python package skeleton (T001). Can start immediately, in parallel with Phase 1.
 - **User Story 2 (Phase 4)**: Depends on Phase 3 (T003) — rules reference declared columns
 - **User Story 3 (Phase 5)**: Depends on Phase 3 (T003) — grain references the finalized column set; independent of Phase 4 (US2)
 - **Polish (Phase 6)**: Depends on Phase 3 (T004), Phase 4 (T007), and Phase 5 (T011) — the validator checks the whole, now-complete contract
@@ -126,6 +126,7 @@ note references the finalized 6-column set.
 
 ### Parallel Opportunities
 
+- Phase 1 (Setup, T001) and Phase 3 (US1) can proceed in parallel — the package skeleton and the YAML contract are unrelated files (analyze finding E1)
 - Phase 4 (US2, `quality_rules`) and Phase 5 (US3, `grain`/`sla`/`versioning`) can proceed in parallel once Phase 3 (US1) completes — both append different top-level keys to the same file but don't depend on each other's content
 - T010 (`versioning` block) can be written in parallel with T008-T009 within Phase 5 — independent top-level key
 - T014 (Polish, quickstart end-to-end) has no parallel partner left by that point — it's the final check
