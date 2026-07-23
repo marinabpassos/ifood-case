@@ -118,7 +118,7 @@ bronze and the feature 003 profiling baseline.
 
 ### Implementation for User Story 4
 
-- [ ] T013 [US4] Run the SC-004 guardrail queries (quickstart.md Step 3) against `ifood_case.bronze.yellow_taxi_trips` — counts for `total_amount <= 0`, `passenger_count IS NULL OR passenger_count = 0`, and out-of-range `tpep_pickup_datetime`/`tpep_dropoff_datetime` — and confirm each matches feature 003's per-month rates (e.g. ~144,146 total negative/zero `total_amount` rows across all 5 months) (depends on T012)
+- [ ] T013 [US4] Run the SC-004 guardrail queries (quickstart.md Step 3) against `ifood_case.bronze.yellow_taxi_trips` — counts for `total_amount <= 0`, `passenger_count IS NULL OR passenger_count = 0`, out-of-range `tpep_pickup_datetime`/`tpep_dropoff_datetime`, and `tpep_dropoff_datetime < tpep_pickup_datetime` — confirm the first three match feature 003's per-month rates (e.g. ~144,146 total negative/zero `total_amount` rows across all 5 months), and record the fourth as this pipeline's first-ever measurement of that condition (no feature 003 baseline exists to compare against — analyze finding D1) (depends on T012)
 
 **Checkpoint**: Bronze confirmed to preserve every known-defect row unfiltered — all 4 user stories independently functional.
 

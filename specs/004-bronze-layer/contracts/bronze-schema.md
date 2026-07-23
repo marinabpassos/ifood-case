@@ -25,7 +25,7 @@ feature 003's `findings.md`.
 
 ## Columns this contract does not hardcode
 
-The remaining ~12 source columns (e.g. `trip_distance`, `store_and_fwd_flag`,
+The remaining 13 source columns (e.g. `trip_distance`, `store_and_fwd_flag`,
 `PULocationID`, `DOLocationID`, `payment_type`, `fare_amount`, `extra`,
 `mta_tax`, `tip_amount`, `tolls_amount`, `improvement_surcharge`,
 `congestion_surcharge`, `airport_fee`) are **not** individually retyped by

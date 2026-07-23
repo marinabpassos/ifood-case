@@ -62,6 +62,11 @@ SELECT count(*) FROM ifood_case.bronze.yellow_taxi_trips WHERE total_amount <= 0
 SELECT count(*) FROM ifood_case.bronze.yellow_taxi_trips WHERE passenger_count IS NULL OR passenger_count = 0;
 SELECT count(*) FROM ifood_case.bronze.yellow_taxi_trips
   WHERE tpep_pickup_datetime < '2023-01-01' OR tpep_dropoff_datetime >= '2023-06-01';
+
+-- 4th guardrail condition: no feature 003 baseline exists for this one —
+-- this is the first time it's measured in this pipeline
+SELECT count(*) FROM ifood_case.bronze.yellow_taxi_trips
+  WHERE tpep_dropoff_datetime < tpep_pickup_datetime;
 ```
 
 **Expected outcome**: Each count is consistent with the per-month rates

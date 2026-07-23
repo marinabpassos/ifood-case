@@ -133,6 +133,13 @@ due to any business-rule condition.
 3. **Given** feature 003 found a small number of out-of-range-date rows
    per month, **When** bronze ingestion runs, **Then** those rows are
    present in bronze unfiltered.
+4. **Given** no baseline for this condition exists yet anywhere in the
+   pipeline (feature 003's profiling did not measure trip duration),
+   **When** bronze ingestion runs, **Then** rows where
+   `tpep_dropoff_datetime` is before `tpep_pickup_datetime` are present in
+   bronze unfiltered, and this feature's own run establishes the first
+   quantified count of this condition (rather than comparing against a
+   feature 003 baseline that doesn't exist).
 
 ---
 
@@ -195,6 +202,10 @@ due to any business-rule condition.
   Columns match the source schema with consistent types across all 5
   months, plus `_source_file` and `_ingested_at`. No business-quality
   flags or filters — those begin in silver (feature 006).
+- **Bronze Ingestion Run**: a record of this feature's own ingestion
+  execution — rows read, rows written, duplicates removed, schema
+  validation status, execution timestamp (FR-007). Not a business entity;
+  this feature's own auditable evidence of what happened.
 
 ## Success Criteria *(mandatory)*
 
@@ -232,13 +243,13 @@ due to any business-rule condition.
   IS in scope for bronze, per the 2026-07-23 brainstorming decision
   (`docs/superpowers/specs/2026-07-23-medallion-layering-design.md`) — it
   is classified as a technical/structural rule, not a business one.
-- The schema rename (FR-001) is assumed possible via standard Unity
-  Catalog tooling (e.g. `ALTER SCHEMA ... RENAME TO` or equivalent). If
-  Databricks Free Edition restricts this the way it restricted direct
-  catalog creation in feature 002, the fallback is: create `landing` fresh
-  via Spark SQL and re-land the files into it, verify before removing the
-  old `bronze`-named location — and this fallback, if needed, MUST be
-  documented in `DECISOES_PROJETO.md` per Constitution Principle IV.
+- The schema rename (FR-001) is implemented as create-new + copy + verify
+  + drop-old (research.md §1), not a metadata-only rename — confirmed via
+  Databricks documentation that Unity Catalog has no `ALTER SCHEMA ...
+  RENAME TO` statement on any tier (not a Free-Edition-specific
+  restriction). This is the primary implementation path, not a
+  conditional fallback, and it MUST be documented in `DECISOES_PROJETO.md`
+  per Constitution Principle IV.
 - No data-quality assertions or business-rule tests belong in this
   feature beyond schema-shape and volume checks — actual business DQ
   rules are feature 006's scope, formalized against the contract from
