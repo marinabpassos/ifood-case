@@ -143,8 +143,10 @@ independent of what the actual numbers turn out to be.
   `ifood_case.bronze.yellow_taxi_trips` (feature 004) — not the landing
   zone, not raw parquet files.
 - **FR-002**: Before writing anything, the pipeline MUST assert bronze's
-  actual schema is compatible with the column types
-  `contracts/nyc_taxi_silver.yaml` declares, and fail explicitly (not
+  actual schema is compatible with the 5 business-column types
+  `contracts/nyc_taxi_silver.yaml` declares (excluding
+  `_silver_processed_at`, which this feature adds fresh and has no
+  bronze equivalent to compare against), and fail explicitly (not
   silently coerce) if it isn't.
 - **FR-003**: The pipeline MUST apply exactly the 4 drop rules declared
   in the contract (`total_amount_negative_or_zero`,

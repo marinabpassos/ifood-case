@@ -103,6 +103,8 @@ description: "Task list for Data Quality & Camada Silver"
 - [ ] T013 Run quickstart.md Steps 2-3 (SQL guardrail queries + `DESCRIBE TABLE`) against `ifood_case.silver.yellow_taxi_trips` and confirm all 4 guardrail queries return 0 and the schema matches the contract's 6 columns (SC-001/SC-002) (depends on T012)
 - [ ] T014 Run quickstart.md Step 4: compare the 4 independent counts from T012 against feature 004's `ingestion-log.md` baseline (144,146 / 702,146 / 795 / 1,077) and confirm an exact match (SC-003) (depends on T012)
 - [ ] T015 [P] Write `specs/006-silver-data-quality/dq-run-log.md` from T012's JSON output plus T013/T014's verification results (research.md §6) (depends on T013, T014)
+- [ ] T016 [P] Confirm `contracts/nyc_taxi_silver.yaml` has no diff introduced by this feature's implementation (`git diff contracts/nyc_taxi_silver.yaml` clean) — this feature implements the already-decided contract, it does not redecide it (FR-008)
+- [ ] T017 [P] Run quickstart.md Step 5: a sample `GROUP BY` aggregation directly against `ifood_case.silver.yellow_taxi_trips` with no extra cleaning clause, confirming the table is analysis-ready (SC-004) (depends on T013)
 
 ---
 
@@ -111,7 +113,7 @@ description: "Task list for Data Quality & Camada Silver"
 ### Phase Dependencies
 
 - **Setup (Phase 1)**: No dependencies — start immediately
-- **Foundational (Phase 2)**: Depends on Phase 1 (T002, Databricks access) — BLOCKS all user stories (contract loading + schema assertion are genuine cross-cutting prerequisites here, unlike features 004/005)
+- **Foundational (Phase 2)**: No dependency on Databricks access to *write* T003/T004's code — parsing a local YAML and writing assertion logic needs nothing from the platform. Only *running* the finished script (Polish, T011) needs Phase 1's T002 confirmed. Still BLOCKS all user stories at the content level (contract loading + schema assertion are genuine prerequisites for the rule/column/report logic)
 - **User Story 1 (Phase 3)**: Depends on Phase 2 (T004)
 - **User Story 2 (Phase 4)**: Depends on Phase 3 (T006) — needs the drop mask
 - **User Story 3 (Phase 5)**: Depends on Phase 4 (T009) — needs the write to exist

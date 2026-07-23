@@ -68,6 +68,18 @@ Compare Step 1's JSON output against feature 004's
 reported separately and falls between 702,146 (the largest single
 count) and 848,164 (the sum of all 4).
 
+## Step 5 — Verify silver is analysis-ready as-is (User Story 1 / SC-004)
+
+```sql
+SELECT month(tpep_pickup_datetime) AS month, avg(total_amount) AS avg_total_amount
+FROM ifood_case.silver.yellow_taxi_trips
+GROUP BY 1 ORDER BY 1;
+```
+
+**Expected outcome**: Runs directly against `ifood_case.silver.yellow_taxi_trips`
+with no `WHERE`/cleaning clause needed — proving the table is ready for
+feature 008's analytical questions as-is.
+
 ## Done when
 
 - [ ] Step 1 output reviewed — `schema_assertion_status: pass`, all
@@ -75,5 +87,9 @@ count) and 848,164 (the sum of all 4).
 - [ ] Step 2 queries all return 0
 - [ ] Step 3 confirms exactly 6 columns matching the contract
 - [ ] Step 4 confirms all 4 counts match feature 004's numbers exactly
+- [ ] Step 5 confirms a direct aggregation query runs against silver
+      with no extra cleaning clause
 - [ ] `specs/006-silver-data-quality/dq-run-log.md` written from Step 1's
       output (research.md §6)
+- [ ] `contracts/nyc_taxi_silver.yaml` has no diff from this feature's
+      implementation (FR-008)
