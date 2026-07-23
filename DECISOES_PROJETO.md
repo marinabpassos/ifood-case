@@ -167,17 +167,17 @@ Duas frentes, com papéis diferentes:
 
 ## 9. Metodologia de desenvolvimento: SDD (Spec-Driven Development)
 
-- Ferramenta: skill `sdd-skill` (SpillwaveSolutions/sdd-skill) para Claude Code,
-  baseada na metodologia do GitHub Spec-Kit
-- Fluxo: **Specify → Plan → Tasks → Implement**, com checkpoint humano entre
-  cada fase
-- Specs devem viver como arquivos versionados em `.claude/specs/` dentro do
-  repositório (não apenas em notebooks do workspace)
-- Instalação:
-  ```
-  /plugin marketplace add SpillwaveSolutions/sdd-skill
-  /plugin install sdd-skill
-  ```
+- Ferramenta: **GitHub Spec Kit** nativo (`speckit-*`), instalado como skills
+  do Claude Code em `.claude/skills/` — não o plugin `sdd-skill`
+  (SpillwaveSolutions) cogitado inicialmente
+- Fluxo: **Constitution → Specify → [Clarify] → Plan → [Checklist] → Tasks →
+  [Analyze] → Implement → Converge**, com checkpoint humano entre cada fase
+  (ver `ORDEM_SPECKIT.txt` para a ordem completa dos comandos)
+- Specs devem viver como arquivos versionados em `specs/<NNN-nome>/` na raiz
+  do repositório (convenção nativa do Spec Kit), não apenas em notebooks do
+  workspace
+- Constituição do projeto (princípios e governança) em
+  `.specify/memory/constitution.md`
 - **Cuidado**: manter o `CLAUDE.md` enxuto. Instruções nesse arquivo são
   seguidas de forma probabilística, não determinística — arquivos muito longos
   degradam a qualidade de adesão às regras. Preferir mover regras críticas para
@@ -198,8 +198,9 @@ ifood-case/
 ├─ src/            # Código fonte da solução
 ├─ analysis/       # Scripts/Notebooks com as respostas das perguntas
 ├─ contracts/       # Contratos de dados das tabelas
-├─ .claude/
-│  └─ specs/       # Specs versionadas do fluxo SDD
+├─ data/           # Landing zone local (plano B de ingestão), ignorada pelo git
+├─ specs/          # Specs versionadas do fluxo SDD (convenção Spec Kit)
+├─ .specify/       # Constituição, templates e config do Spec Kit
 ├─ README.md
 └─ requirements.txt
 ```
