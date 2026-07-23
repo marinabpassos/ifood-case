@@ -18,6 +18,9 @@ data/*
 # Claude Code (config local, não versionada)
 .claude/settings.local.json
 
+# Databricks CLI (estado local do aitools, bundles, etc.)
+.databricks/
+
 # Enunciado do case (não versionado)
 Case_iFood_-_Data_Architecture__281_29.pdf
 
