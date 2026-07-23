@@ -11,11 +11,14 @@ Answer the case's two required analytical questions directly against
 (5 rows) and average `passenger_count` by hour of `tpep_pickup_datetime`
 for May 2023 (24 rows). Delivered two ways, deliberately kept both (user
 decision, 2026-07-23): (1) two plain standalone `.sql` files a business
-user can run directly with no other tooling, and (2) a genuine Databricks
-notebook (PySpark, executing the same SQL via `spark.sql()`) that also
-renders each result as a chart — a concrete demonstration of the
-platform's visualization capability, not just the minimal path to an
-answer. Chart images are generated server-side (matplotlib is already
+user can run directly with no other tooling, and (2) a single genuine
+Databricks notebook, `analysis/analise.py` (revised once more, user
+feedback 2026-07-23: real cell structure, not a flat script) — one
+section per question, each a markdown cell with the question, a `%sql`
+cell whose rendered result table *is* the answer, and a Python cell that
+turns that same result (`_sqldf`) into a chart — a concrete demonstration
+of the platform's visualization capability, not just the minimal path to
+an answer. Chart images are generated server-side (matplotlib is already
 present on Databricks Runtime) and brought back into the repo as PNGs
 via the job's own JSON output (base64), the same "compute on Databricks,
 transcribe the result locally" pattern every prior feature already uses
@@ -23,8 +26,9 @@ transcribe the result locally" pattern every prior feature already uses
 install) needed.
 
 Additionally ships one bonus/differentiator analysis (user request,
-2026-07-23), in the same notebook: a daily trip-count time series across
-the full Jan-May 2023 window, decomposed into trend and weekly
+2026-07-23), as one more section of the same `analise.py` notebook,
+same markdown/`%sql`/Python-chart pattern: a daily trip-count time series
+across the full Jan-May 2023 window, decomposed into trend and weekly
 seasonality using Prophet, with its own two chart images — clearly
 labeled as bonus content, never presented as a substitute for the two
 required answers above.
@@ -39,15 +43,27 @@ audiences for the same two answers.
 
 **Primary Dependencies**: PySpark (`spark.sql`, `.toPandas()` — each
 result is at most 24 rows, trivially small to collect to the driver),
-`matplotlib` (pre-installed on Databricks Runtime, generates the chart
-images; no new dependency to add to `requirements.txt` since it never
-runs locally), `base64`/`io` (stdlib, to round-trip the PNG bytes through
-the job's JSON output). Bonus analysis only: `prophet` — **not**
-pre-installed on Databricks Runtime, declared as a job-level PyPI
-library (`"libraries": [{"pypi": {"package": "prophet"}}]`) on the
-`generate_answers` task rather than a `%pip install` cell (research.md
-§6); `pandas` (already a PySpark/Databricks Runtime transitive
-dependency) to shape the `ds`/`y` DataFrame Prophet requires.
+`plotly` + `kaleido==0.2.1` (chart rendering + static PNG export;
+**not** pre-installed on Databricks Runtime — installed by the
+notebook's own first cell alongside `prophet`, research.md §1 revised
+again after implementation: replaced `matplotlib`, which is
+pre-installed but produced noisy `findfont` warnings for unavailable
+font families and a visibly less polished static render than Kaleido's
+Chromium-based export; Kaleido pinned below 1.x because that major
+version dropped its bundled Chromium for a separate `pio.get_chrome()`
+download step, a poor fit for Free Edition's restricted outbound
+network), `base64` (stdlib, to round-trip the PNG bytes — `.to_image()`
+returns bytes directly, no `io.BytesIO` buffer dance needed the way
+matplotlib's `savefig` required). Bonus analysis only: `prophet` — **not**
+pre-installed on Databricks Runtime, installed by the notebook's own
+first two cells (`%pip install prophet plotly kaleido==0.2.1` +
+`dbutils.library.restartPython()`, research.md §6, revised twice after
+implementation — both a task-level `libraries` field and a job-level
+`environments`/`environment_key` entry were tried and
+rejected/insufficient before landing on notebook-level `%pip install`,
+the only mechanism that works both for job runs and interactive runs);
+`pandas` (already a PySpark/Databricks Runtime transitive dependency)
+to shape the `ds`/`y` DataFrame Prophet requires.
 
 **Storage**: Reads `ifood_case.silver.yellow_taxi_trips` only (features
 004-006). Writes nothing — no table, no schema change.
@@ -76,8 +92,10 @@ the SQL Warehouse.
 **Constraints**: Free Edition's serverless-only compute / single
 2X-Small SQL Warehouse constraints (feature 002) apply unchanged.
 
-**Scale/Scope**: 3 standalone `.sql` files, 1 notebook (3 queries + 4
-chart-generation cells total), 4 PNG chart images, 1 results document.
+**Scale/Scope**: 3 standalone `.sql` files, 1 multi-cell notebook
+(markdown + `%sql` + Python cells — 3 questions/sections, each with its
+own markdown, query, and chart cell), 4 PNG chart images, 1 results
+document.
 
 ## Constitution Check
 
@@ -88,7 +106,7 @@ chart-generation cells total), 4 PNG chart images, 1 results document.
 | I. Data Quality Is a Gate | No | Reads already-cleaned data (features 004-006); introduces no new data-quality rule. |
 | II. Data Contracts First | No | Reads the silver table under its existing contract (feature 005); doesn't write any table, so no new contract is needed. |
 | III. Observability Is Part of the Deliverable | No | A read-only analytical notebook is not a pipeline execution in Principle III's sense (no rows dropped/flagged, nothing to log to `_pipeline_run_log`). |
-| IV. Fixed Stack, Justified Deviations | **Yes** | PySpark (fixed stack) plus `matplotlib`, which ships with Databricks Runtime already — not a new dependency introduced by this project, just a standard-library-adjacent tool already present on the fixed compute environment. The standalone `.sql` files use the constitution's own named "Consumo final: SQL via Databricks SQL Warehouse" path directly. **Justified deviation**: the bonus analysis adds `prophet`, a genuinely new dependency not part of the fixed stack or pre-installed on the Runtime — justified because it's explicitly user-requested differentiator content (not pipeline logic), scoped to a single job-level library declaration on one task of one read-only analytical notebook, with zero footprint on any pipeline stage (bronze/silver) or its dependencies. |
+| IV. Fixed Stack, Justified Deviations | **Yes** | PySpark (fixed stack) for all 3 queries. The standalone `.sql` files use the constitution's own named "Consumo final: SQL via Databricks SQL Warehouse" path directly. **Justified deviations** (both post-implementation, both scoped to this one read-only analytical notebook, zero footprint on bronze/silver or their dependencies): (1) `prophet` for the bonus analysis — explicitly user-requested differentiator content. (2) `plotly`+`kaleido==0.2.1` for chart rendering, replacing the originally-planned `matplotlib` (which needed no justification as pre-installed/not-a-new-dependency) — this genuinely is a new dependency, on the *required* Q1/Q2 charts too, not just the bonus; justified by explicit user request after hitting matplotlib's `findfont` warning spam and asking to evaluate an alternative library, with Kaleido's Chromium-based render also giving a visibly crisper static PNG (research.md §1, §10, revised after implementation). |
 | V. Spec-Driven Development Workflow | **Yes** | Specify → Plan (this document, revised once on user feedback before tasks) → Tasks → Implement — satisfied by construction. |
 | VI. Lean Instructions, Simple Architecture | **Yes** | One notebook, two SQL files, one results doc — no new schema, no new table, no `src/` package. The notebook is not speculative scope: it's the concrete mechanism chosen (over a simpler pure-SQL-only path) specifically to satisfy spec FR-006/SC-005 (chart requirement), a real, already-approved requirement — not gold-plating. |
 
@@ -121,12 +139,12 @@ ifood_case/
 │   ├── avg_total_amount_by_month.sql        # US1/US3 / FR-001, FR-004: standalone query, business-SQL path
 │   ├── avg_passenger_count_by_hour_may.sql  # US2/US3 / FR-002, FR-004: standalone query, business-SQL path
 │   ├── daily_trip_counts.sql                # US5 (bonus) / FR-007: standalone query, daily trip counts Jan-May 2023
-│   ├── generate_answers.py                  # US4/US5 / FR-006, FR-009: Databricks notebook - runs all 3 queries via spark.sql(), renders + saves chart PNGs, fits Prophet for the bonus decomposition
+│   ├── analise.py                           # US4/US5 / FR-006, FR-009: single genuine Databricks notebook (markdown + %sql + Python cells, not a flat script) - one section per question (markdown question, %sql query whose result table is the answer, Python chart cell reading `_sqldf`), plus a bonus section fitting Prophet
 │   ├── charts/
-│   │   ├── avg_total_amount_by_month.png    # Generated by generate_answers.py, decoded from job output
+│   │   ├── avg_total_amount_by_month.png    # Generated by analise.py, decoded from job output
 │   │   ├── avg_passenger_count_by_hour_may.png
-│   │   ├── daily_trip_volume_trend.png      # Bonus (US5): Prophet model.plot(forecast)
-│   │   └── daily_trip_volume_components.png # Bonus (US5): Prophet model.plot_components(forecast)
+│   │   ├── daily_trip_volume_trend.png      # Bonus (US5): Prophet plot_plotly(forecast), iFood-red restyled
+│   │   └── daily_trip_volume_components.png # Bonus (US5): Prophet plot_components_plotly(forecast), iFood-red restyled
 │   └── answers.md                           # US3/US4/US5 / FR-004-009: both required questions' full results + embedded charts + plain-language answers, plus the bonus analysis clearly labeled as differentiator content
 ```
 
@@ -142,7 +160,8 @@ always meant for. No `tests/` directory — verification is operational
 
 | Deviation | Why needed | Simpler alternative rejected because |
 |---|---|---|
-| `prophet` added as a job-level PyPI library, not part of the fixed stack | Bonus/differentiator analysis (User Story 5) explicitly requested by the user; no fixed-stack tool performs trend/seasonality decomposition | Hand-rolled decomposition (e.g., a manual weekly rolling average) would not be a genuine Prophet-based analysis, which the user specifically named |
+| `prophet` (installed via the notebook's own `%pip install`), not part of the fixed stack | Bonus/differentiator analysis (User Story 5) explicitly requested by the user; no fixed-stack tool performs trend/seasonality decomposition | Hand-rolled decomposition (e.g., a manual weekly rolling average) would not be a genuine Prophet-based analysis, which the user specifically named |
+| `plotly` + `kaleido==0.2.1` (post-implementation revision), replacing `matplotlib` for all 4 charts, not part of the fixed stack | User explicitly asked to evaluate an alternative library after matplotlib's `findfont` warning-spam surfaced on an interactive run; Kaleido's Chromium-based static export also renders visibly crisper than matplotlib for the same chart | Fixing only the font warning (pin `font.family` to `DejaVu Sans`, matplotlib's one Runtime-bundled font) was tried first and worked, but didn't address the user's actual ask ("dá uma olhada em outra lib, tipo plotly") — kept as a smaller alternative only until Plotly was evaluated and preferred |
 
 No other entries — the rest of the Constitution Check above found no
 violations or workarounds requiring justification. The notebook itself

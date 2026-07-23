@@ -26,25 +26,31 @@ involved, matching User Story 3's plain-SQL promise.
 
 ## Step 2 — Run the notebook to generate charts (User Story 4/5 / FR-006, FR-009)
 
+`analise.py` is a single genuine multi-cell notebook (markdown + `%sql`
++ Python cells; research.md §1-§2, revised 2026-07-23) — each `%sql`
+cell embeds its own query text directly (no runtime read of the
+standalone `.sql` files needed), so only the notebook itself needs
+uploading. All installs (`%pip install prophet plotly kaleido==0.2.1`)
+and all imports live in one dedicated block right after the title cell
+(research.md §6/§11, revised twice more — self-installing, not a
+job-level dependency; matplotlib replaced by Plotly+Kaleido for
+rendering), so the notebook is self-sufficient whether run interactively
+or via a job with no special job JSON needed for either dependency:
+
 ```
-databricks workspace import /Workspace/Users/<you>/ifood_case/avg_total_amount_by_month.sql \
-  --file analysis/avg_total_amount_by_month.sql --format AUTO --overwrite
-databricks workspace import /Workspace/Users/<you>/ifood_case/avg_passenger_count_by_hour_may.sql \
-  --file analysis/avg_passenger_count_by_hour_may.sql --format AUTO --overwrite
-databricks workspace import /Workspace/Users/<you>/ifood_case/daily_trip_counts.sql \
-  --file analysis/daily_trip_counts.sql --format AUTO --overwrite
-databricks workspace import /Workspace/Users/<you>/ifood_case/generate_answers \
-  --file analysis/generate_answers.py --language PYTHON --format SOURCE --overwrite
-databricks jobs submit --json '{"tasks":[{"task_key":"generate_answers","notebook_task":{"notebook_path":"/Workspace/Users/<you>/ifood_case/generate_answers"},"libraries":[{"pypi":{"package":"prophet"}}]}]}' --timeout 10m
+databricks workspace import /Workspace/Users/<you>/ifood_case/analise \
+  --file analysis/analise.py --language PYTHON --format SOURCE --overwrite
+databricks jobs submit --json '{"tasks":[{"task_key":"analise","notebook_task":{"notebook_path":"/Workspace/Users/<you>/ifood_case/analise"}}]}' --timeout 10m
 databricks jobs get-run-output <run-id>
 ```
 
 **Expected outcome**: A JSON result containing all three queries' row
 data plus four base64-encoded PNG chart images (2 for the required
-questions, 2 for the bonus Prophet decomposition). The `libraries`
-field installs `prophet` on the serverless job cluster before the task
-runs (research.md §6) — allow extra time for that install on top of the
-usual job runtime.
+questions, 2 for the bonus Prophet decomposition), rendered via Plotly
+and exported with Kaleido. The notebook's own `%pip install` +
+`dbutils.library.restartPython()` cells install Prophet, Plotly, and
+Kaleido before they're imported — allow extra time for that install on
+top of the usual job runtime.
 
 ## Step 3 — Decode the charts and confirm they match the data
 
@@ -76,9 +82,9 @@ without re-running anything.
 
 - [ ] Step 1 confirms all three standalone `.sql` files run with no
       notebook (SC-003)
-- [ ] Step 2 notebook run succeeds (with `prophet` installed via the
-      job's `libraries` field), returns all three row sets and all four
-      chart payloads
+- [ ] Step 2 notebook run succeeds (with `prophet` installed by the
+      notebook's own `%pip install` cell), returns all three row sets
+      and all four chart payloads
 - [ ] Step 3 charts decoded and visually consistent with the row data
       (SC-005, SC-006)
 - [ ] Step 4 confirms `analysis/answers.md` has both required tables,

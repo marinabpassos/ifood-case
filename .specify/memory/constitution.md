@@ -1,28 +1,22 @@
 <!--
 Sync Impact Report
 ===================
-Version change: 1.0.0 → 1.1.0
-Modified principles:
-  - III. Observability Is Part of the Deliverable — lineage phrase
-    "volume→bronze→silver" reworded to "landing→bronze→silver" to match the
-    Landing/Bronze/Silver terminology introduced by Principle VI's update
-    (no meaning change: "volume" always meant the landing-zone Volume).
-  - VI. Lean Instructions, Simple Architecture — minimum layering redefined
-    from two physical layers (landing/bronze merged, straight to silver) to
-    three (landing → bronze → silver), resolving the inconsistency where
-    Principle III already named bronze as a distinct lineage stage while
-    Principle VI described it as merged with landing. Still explicitly caps
-    the architecture at these three layers — no gold layer or star schema
-    added.
+Version change: 1.1.0 → 1.1.1
+Modified principles: none (wording-only correction, no principle redefined)
+Modified sections:
+  - Development Workflow & Repository Structure — ".claude/specs/
+    (versioned SDD specs)" corrected to "specs/ (versioned SDD specs)" to
+    match the repo's actual layout (features 001-008 all live under
+    specs/<NNN-feature-name>/ at the repository root) and Principle V's
+    own wording ("versioned files in the repository ... under the Spec
+    Kit `specs/` structure"), which this line had drifted from.
 Added sections: none
 Removed sections: none
 Templates requiring updates:
   - .specify/templates/plan-template.md ✅ no change needed
   - .specify/templates/spec-template.md ✅ no change needed
   - .specify/templates/tasks-template.md ✅ no change needed
-Follow-up TODOs:
-  - Roadmap (DECISOES_PROJETO.md §13) updated in the same change: new
-    feature 004 "Camada Bronze" inserted, subsequent features renumbered.
+Follow-up TODOs: none
 -->
 
 # iFood Data Architect Case — Constitution
@@ -148,7 +142,7 @@ isn't earning its place for a case of this scope.
 - Repository layout is fixed by the case brief:
   `src/` (pipeline code), `analysis/` (answers to the analytical questions,
   as SQL or structured PySpark), `contracts/` (data contracts),
-  `.claude/specs/` (versioned SDD specs), plus `README.md` and
+  `specs/` (versioned SDD specs), plus `README.md` and
   `requirements.txt` at the root.
 - The two analytical questions this project must answer — average monthly
   `total_amount` across the fleet, and average `passenger_count` by hour of
@@ -172,4 +166,4 @@ Principles above before proceeding to the next phase. Complexity or
 deviation from Principle IV or VI MUST be justified in writing at the point
 it is introduced, not retroactively.
 
-**Version**: 1.1.0 | **Ratified**: 2026-07-22 | **Last Amended**: 2026-07-23
+**Version**: 1.1.1 | **Ratified**: 2026-07-22 | **Last Amended**: 2026-07-23
