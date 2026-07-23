@@ -213,18 +213,28 @@ ifood-case/
 - Criatividade na solução proposta
 - Clareza na comunicação dos resultados
 
-## 13. Pendências / próximos passos
+## 13. Roadmap de features (Spec Kit)
 
-- [ ] Validar se o domínio dos parquets da NYC TLC está liberado na saída de
-      internet da Free Edition
+O restante do case (além do scaffold, já entregue em `specs/001-repo-scaffold/`)
+é quebrado nas features abaixo, cada uma com seu próprio ciclo
+Specify → Plan → Tasks → Implement. Tamanho pensado para caber em uma spec
+cada: nem tão grande a ponto de misturar contextos técnicos muito
+diferentes (ex.: EDA junto com engenharia de contrato), nem tão pequena a
+ponto de ser só uma task isolada.
+
+| # | Feature | Escopo | Depende de |
+|---|---|---|---|
+| 002 | Ambiente & Landing Zone (Bronze) | Validar Free Edition (rede, serverless, warehouse), criar catalog/schema/volume no Unity Catalog, carregar os parquets Jan-Mai/2023 na landing zone | — |
+| 003 | Data Profiling (EDA sobre Bronze) | Volumetria por mês/arquivo, schema real vs. esperado, nulos e distribuição das colunas obrigatórias, estatísticas descritivas de `total_amount`/`passenger_count` | 002 |
+| 004 | Contrato de Dados da Silver | `contracts/nyc_taxi_silver.yaml` (schema, grão, regras de qualidade, SLA, versionamento) escrito **antes** do código de escrita da tabela (Constituição, Princípio II) | 003 |
+| 005 | Data Quality & Camada Silver | Aplica as regras de DQ definidas no profiling + o contrato (schema assert), escreve a tabela Delta silver tipada e limpa | 004 |
+| 006 | Observability da Pipeline | Tabela `_pipeline_run_log`, métricas de volume/schema por execução, lineage nativo do Unity Catalog, alerting por threshold | 005 |
+| 007 | Análises Analíticas | SQL/PySpark em `analysis/` respondendo as duas perguntas do case (média de `total_amount` por mês; média de `passenger_count` por hora em maio) | 005 |
+| 008 | Consumo & Diferencial | Genie Space (UI, produção) sobre a silver + protótipo do agente NL-to-SQL custom via Claude Code + MCP Databricks | 005 |
+
+**Ordem sugerida**: 002 → 003 → 004 → 005, depois 006 e 007 podem correr em
+paralelo (ambas dependem só de 005), 008 por último (ou a qualquer momento
+após 005, se o tempo permitir adiantar o diferencial).
+
+Pendência solta, fora do fluxo de features (fazer antes de iniciar a 002):
 - [ ] Configurar conexão MCP do Databricks no Claude Code
-- [ ] Instalar `sdd-skill` e rodar a fase **Specify** do pipeline de ingestão
-- [ ] Rodar data profiling sobre os dados brutos (bronze) antes de modelar a
-      silver
-- [ ] Definir e aplicar regras de data quality na transição bronze → silver
-- [ ] Escrever o contrato de dados da tabela silver (`contracts/`) antes de
-      implementar a escrita da tabela
-- [ ] Instrumentar observability da pipeline (métricas de volume, schema,
-      lineage e tabela de log de execução)
-- [ ] Criar Genie Space sobre a tabela silver
-- [ ] Prototipar o agente custom de NL-to-SQL
