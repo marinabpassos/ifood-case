@@ -107,7 +107,7 @@ ifood_case/
 │       ├── rename_landing_schema.py      # US1 / FR-001: landing schema move (create landing, copy files, verify, drop old bronze-named schema)
 │       └── ingest_bronze.py              # US2-4 / FR-002-008: read landing, cast drifted columns, add ingestion metadata, dedup, write Delta table, report counts
 └── specs/004-bronze-layer/
-    └── (this feature's docs, see above — no ingestion-log.md until implementation, see research.md §6)
+    └── (this feature's docs, see above — no ingestion-log.md until implementation, see research.md §5)
 ```
 
 **Structure Decision**: Single-project layout, consistent with features

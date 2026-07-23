@@ -42,7 +42,7 @@ New entity. Grain: one row per trip record, spanning all 5 months
   `dropoff` before `pickup`, and out-of-range dates all remain present at
   the same rate feature 003 measured.
 - Full-row duplicates (measured on source columns only, before the two
-  metadata columns are added — research.md §5) MUST NOT appear more than
+  metadata columns are added — research.md §4) MUST NOT appear more than
   once.
 - Total row count MUST equal feature 003's total (16,186,386) minus
   whatever duplicate count this feature's own run reports.
@@ -56,7 +56,7 @@ schema (per the 2026-07-23 brainstorming decision).
 
 New entity — a lightweight, single-purpose record of this feature's own
 execution, persisted as `specs/004-bronze-layer/ingestion-log.md`
-(research.md §6). Not the durable `_pipeline_run_log` table (that's
+(research.md §5). Not the durable `_pipeline_run_log` table (that's
 feature 007's scope) — this is this feature's own auditable evidence for
 FR-007/SC-003.
 

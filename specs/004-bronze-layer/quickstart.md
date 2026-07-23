@@ -72,7 +72,7 @@ bronze applied no business-rule filtering (User Story 4).
 ## Step 4 — Transcribe the run into `ingestion-log.md`
 
 Write `specs/004-bronze-layer/ingestion-log.md` from Step 2's JSON output
-(research.md §6) — same convention as feature 003's `findings.md`.
+(research.md §5) — same convention as feature 003's `findings.md`.
 
 ## Done when
 

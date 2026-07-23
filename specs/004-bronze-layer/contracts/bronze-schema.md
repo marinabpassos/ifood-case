@@ -36,7 +36,7 @@ whatever type family feature 003 already confirmed as uniform.
 This contract does not restate each of their exact Spark types here to
 avoid a second, hand-maintained copy of feature 003's findings drifting
 out of sync with it. Instead, the ingestion script's own FR-008
-pre-transformation assertion (research.md §7) is the authoritative,
+pre-transformation assertion (research.md §6) is the authoritative,
 executable check: it compares each month's actual schema against feature
 003's documented baseline (`../003-data-profiling/findings.md` §1) column
 by column, and fails the job if any column outside the two known
@@ -52,7 +52,7 @@ unchanged from source" — holds by construction.
    regardless of which month they originated from.
 3. `_source_file` and `_ingested_at` are present and non-null on every row.
 4. No row is missing due to a business-quality rule — only exact full-row
-   duplicates (research.md §5) can reduce the row count below feature
+   duplicates (research.md §4) can reduce the row count below feature
    003's total.
 
 ## Non-guarantees (explicitly out of scope here)

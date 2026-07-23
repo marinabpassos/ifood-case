@@ -74,34 +74,39 @@ into an implementable design.
   tables) for no benefit over one physical table at this data volume
   (~16.2M rows total), contrary to Principle VI.
 
-## 4. Ingestion metadata columns (FR-004)
+## 4. Ingestion metadata columns and duplicate detection (FR-004, FR-005)
 
-- **Decision**: `_source_file` via `pyspark.sql.functions.input_file_name()`
-  (captured per-row, before the union, so each row keeps its true origin
-  file); `_ingested_at` via a single `current_timestamp()` value applied
-  to the whole batch (computed once, not re-evaluated per row) so every
-  row from this run shares one ingestion timestamp.
+- **Decision**: Add `_source_file` via `pyspark.sql.functions.input_file_name()`
+  immediately after reading each month (i.e. before the union) — this
+  function only resolves reliably when evaluated close to the file read,
+  before any shuffle. Add `_ingested_at` via a single `current_timestamp()`
+  value applied once to the whole batch. Then run
+  `.dropDuplicates(subset=<original_source_columns>)` on the unioned
+  DataFrame, **explicitly excluding** `_source_file` and `_ingested_at`
+  from the subset. Report `rows_before_dedup - rows_after_dedup` as the
+  removed-duplicate count.
+- **Rationale**: An earlier draft of this decision assumed
+  `_source_file`/`_ingested_at` had to be added *after* dedup to avoid
+  breaking duplicate detection — but `input_file_name()` must actually be
+  captured *before* the union/dedup shuffle to resolve correctly at all
+  (Spark loses the per-partition file context after a shuffle, and would
+  otherwise return an empty string for every row). Reconciling both
+  constraints: add both metadata columns early (correct for
+  `input_file_name()`), but pass an explicit `subset` of only the original
+  source columns to `dropDuplicates()`, so the metadata columns can't
+  accidentally make every row look unique. This is the only ordering that
+  is both technically correct and satisfies FR-005's "full-row duplicate"
+  definition from feature 003 (0 found per month).
+- **Alternatives considered**: Adding metadata columns after dedup (no
+  `subset` needed) — rejected once we confirmed `input_file_name()`
+  requires evaluation before the union's shuffle to stay accurate.
+  Deduplicating per-month before the union — equivalent result for this
+  dataset (0 duplicates found per month in feature 003) but rejected as an
+  unnecessary extra pass when one `dropDuplicates(subset=...)` over the
+  combined DataFrame covers both intra- and cross-file duplicates in one
+  step.
 
-## 5. Duplicate detection ordering (FR-005)
-
-- **Decision**: Run `.dropDuplicates()` on the original source columns
-  only, **before** adding `_source_file`/`_ingested_at`. Report
-  `rows_before_dedup - rows_after_dedup` as the removed-duplicate count.
-- **Rationale**: If dedup ran after adding metadata columns, `_source_file`
-  would already make every row from a different file "unique" even when
-  content is identical across files, and `_ingested_at` would make
-  same-batch rows unique by timestamp alone if computed per-row — either
-  would silently defeat FR-005. Deduplicating on source columns first,
-  consistent with feature 003's finding of 0 full-row duplicates per month,
-  is the only ordering that actually implements "full-row duplicate" as
-  profiling defined it.
-- **Alternatives considered**: Deduplicating per-month before the union —
-  equivalent result for this dataset (0 duplicates found per month in
-  feature 003) but rejected as an unnecessary extra pass when a single
-  dedup over the combined, pre-metadata DataFrame covers both intra- and
-  cross-file duplicates in one step.
-
-## 6. Where the ingestion run report is persisted (FR-007)
+## 5. Where the ingestion run report is persisted (FR-007)
 
 - **Decision**: A new `specs/004-bronze-layer/ingestion-log.md`, authored
   during implementation from the script's JSON output (`rows_read`,
@@ -116,7 +121,7 @@ into an implementable design.
   design (schema, retention, multi-run querying) belongs to feature 007,
   not this one.
 
-## 7. Fail-fast schema validation (FR-008)
+## 6. Fail-fast schema validation (FR-008)
 
 - **Decision**: Before casting/unioning, assert that each month's raw
   schema contains exactly the column set and type-family shape documented
@@ -134,7 +139,7 @@ into an implementable design.
   (there's no operational reason to prefer degraded output over a loud
   failure here).
 
-## 8. Execution mechanism (consistent with features 002-003)
+## 7. Execution mechanism (consistent with features 002-003)
 
 - **Decision**: Both scripts (`rename_landing_schema.py`,
   `ingest_bronze.py`) are written in Databricks notebook-source format,
