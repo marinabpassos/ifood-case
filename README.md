@@ -95,3 +95,30 @@ _Placeholder — esta seção linkará para os scripts em `analysis/` com as
 respostas às duas perguntas do case (média de `total_amount` por mês, e
 média de `passenger_count` por hora no mês de maio) assim que essa feature
 for implementada._
+
+## POC: Chat NL-to-SQL (Diferencial)
+
+> ⚠️ **Isto é uma POC (prova de conceito), não um produto pronto para
+> produção.** Demonstra a viabilidade de um agente conversacional
+> NL-to-SQL sobre a camada silver, mas tem melhorias pendentes
+> conhecidas — ver "Limitações conhecidas da POC" em
+> [`specs/009-poc-app-chat/spec.md`](specs/009-poc-app-chat/spec.md).
+
+Um [Databricks App](https://docs.databricks.com/dev-tools/databricks-apps/)
+(`src/app/`) com interface de chat em português: você faz uma pergunta
+em linguagem natural sobre as corridas de yellow táxi (Jan-Mai/2023), o
+app gera o SQL correspondente via um modelo de linguagem
+(`databricks-meta-llama-3-1-8b-instruct`), executa a consulta de
+verdade na tabela `ifood_case.silver.yellow_taxi_trips` e retorna a
+resposta formatada — sem que você escreva nenhum código.
+
+- **Acesse o app**: https://poc-app-chat-3576264130915931.aws.databricksapps.com
+  (requer login com uma conta do workspace Databricks)
+- **Exemplos de interação já capturados**: [`src/app/examples.md`](src/app/examples.md)
+- **Spec completa e limitações conhecidas**: [`specs/009-poc-app-chat/`](specs/009-poc-app-chat/)
+
+Este app substitui o Genie Space originalmente cogitado no roadmap (ver
+`DECISOES_PROJETO.md` §8 e `.specify/memory/constitution.md` v1.1.2) —
+decisão tomada durante o desenvolvimento porque a configuração do Genie
+é exclusiva de UI, sem caminho via CLI/API, o que quebraria o padrão
+deste projeto de execução ponta a ponta automatizada.
