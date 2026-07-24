@@ -269,17 +269,31 @@ dos resultados".
 - Se usar Databricks Jobs/Workflows para orquestrar, aproveitar o histórico de
   execução nativo em vez de duplicar tudo manualmente
 
-## 8. Agente de consulta em linguagem natural (diferencial do case)
+## 8. Agente de consulta em linguagem natural (diferencial do case) — REVISADO
 
-Duas frentes, com papéis diferentes:
+> Plano original (abaixo, riscado por completo): Genie Space em produção
+> + agente custom via Claude Code/MCP como experimento separado. Nenhum
+> dos dois foi construído como planejado — ver decisão final abaixo.
+> ~~Duas frentes, com papéis diferentes: **Genie Space (produção)**:
+> configurado sobre a tabela silver via UI do Databricks... **Agente
+> custom (diferencial/criatividade)**: construído com Claude Code + MCP
+> do Databricks...~~
 
-- **Genie Space (produção)**: configurado sobre a tabela silver via UI do
-  Databricks. Funciona na Free Edition. É a solução "oficial" entregue ao
-  usuário final — governada pelo Unity Catalog, sem necessidade de código.
-- **Agente custom (diferencial/criatividade)**: construído com Claude Code +
-  MCP do Databricks, recebendo pergunta em NL, convertendo para SQL via LLM,
-  executando no SQL Warehouse e retornando resposta formatada. Documentar como
-  experimento de "agente de dados", não como substituto do Genie.
+**Decisão final (feature 009, `poc-app-chat`, 2026-07-23/24)**: um único
+entregável — **não** o Genie Space, **não** um agente via MCP. Um POC
+de **Databricks App** (`src/app/`, Gradio + Python), implantado
+inteiramente via CLI (mesmo mecanismo de toda feature anterior), com
+chat em português: pergunta em NL → SQL gerado por um Foundation Model
+(`databricks-meta-llama-3-1-8b-instruct`) → execução real no SQL
+Warehouse → resposta formatada. Motivo da mudança: o Genie Space só se
+configura via UI (sem CLI/API), o que quebraria o padrão de execução
+100% automatizada deste projeto; o usuário rejeitou explicitamente usar
+Genie em qualquer ponto da feature. Detalhes completos, inclusive
+limitações conhecidas da POC e os bugs reais encontrados/corrigidos
+durante a implementação (permissões de Unity Catalog por identidade,
+endpoint com rate limit 0, perguntas de acompanhamento, formatação de
+números grandes), em `specs/009-poc-app-chat/`. Constituição atualizada
+para v1.1.2 refletindo essa decisão.
 
 ## 9. Metodologia de desenvolvimento: SDD (Spec-Driven Development)
 
@@ -347,7 +361,7 @@ ponto de ser só uma task isolada.
 | 006 | Data Quality & Camada Silver | Aplica as regras de DQ definidas no profiling + o contrato (schema assert) sobre a bronze, escreve a tabela Delta silver tipada e limpa | 005 |
 | 007 | Observability da Pipeline | Tabela `_pipeline_run_log`, métricas de volume/schema por execução, lineage nativo do Unity Catalog (landing→bronze→silver), alerting por threshold | 006 |
 | 008 | Análises Analíticas | SQL/PySpark em `analysis/` respondendo as duas perguntas do case (média de `total_amount` por mês; média de `passenger_count` por hora em maio) | 006 |
-| 009 | Consumo & Diferencial | Genie Space (UI, produção) sobre a silver + protótipo do agente NL-to-SQL custom via Claude Code + MCP Databricks | 006 |
+| 009 | Consumo & Diferencial (POC `poc-app-chat`) | ~~Genie Space + agente via MCP~~ — revisado durante a implementação para um único Databricks App (chat NL-to-SQL via Foundation Model), sem Genie, sem MCP. Ver §8 | 006 |
 
 **Ordem sugerida**: 002 → 003 → 004 → 005 → 006, depois 007 e 008 podem
 correr em paralelo (ambas dependem só de 006), 009 por último (ou a qualquer

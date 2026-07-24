@@ -1,15 +1,15 @@
 <!--
 Sync Impact Report
 ===================
-Version change: 1.1.0 → 1.1.1
+Version change: 1.1.2 → 1.1.3
 Modified principles: none (wording-only correction, no principle redefined)
 Modified sections:
-  - Development Workflow & Repository Structure — ".claude/specs/
-    (versioned SDD specs)" corrected to "specs/ (versioned SDD specs)" to
-    match the repo's actual layout (features 001-008 all live under
-    specs/<NNN-feature-name>/ at the repository root) and Principle V's
-    own wording ("versioned files in the repository ... under the Spec
-    Kit `specs/` structure"), which this line had drifted from.
+  - Technology Stack & Environment Constraints — "Consumption" line now
+    names feature 009's app by its final name, `poc-app-chat`, and
+    flags it explicitly as a POC (not a finished product) -- the
+    feature was renamed end-to-end (branch, spec directory, the
+    deployed Databricks App itself, all docs) at the user's request on
+    2026-07-24, after the app was already built and in use.
 Added sections: none
 Removed sections: none
 Templates requiring updates:
@@ -131,8 +131,12 @@ isn't earning its place for a case of this scope.
 - **Processing**: PySpark (required by the case).
 - **Table format**: Delta Lake.
 - **Catalog/metadata**: Unity Catalog (native to Free Edition).
-- **Consumption**: SQL via Databricks SQL Warehouse; optional Genie Space
-  over the silver table as the "official" natural-language interface.
+- **Consumption**: SQL via Databricks SQL Warehouse; a custom Databricks
+  App with a chat-style natural-language interface (feature 009,
+  `poc-app-chat` — a POC, not a finished product) is this
+  project's NL-to-SQL consumption path — not Genie Space, which was
+  evaluated and explicitly rejected (its own setup is UI-only, with no
+  CLI/API path, unlike every other mechanism this project uses).
 - **Scope of data**: NYC Yellow Taxi trip records, January–May 2023 only.
   Required columns for the silver layer: `VendorID`, `passenger_count`,
   `total_amount`, `tpep_pickup_datetime`, `tpep_dropoff_datetime`.
@@ -148,9 +152,13 @@ isn't earning its place for a case of this scope.
   `total_amount` across the fleet, and average `passenger_count` by hour of
   day for May — are delivered as versioned artifacts in `analysis/`, not
   ad hoc query results.
-- Any custom NL-to-SQL agent built with the Databricks MCP is a documented
-  experiment/differentiator, and MUST be clearly distinguished from the
-  Genie Space, which is the primary delivered consumption interface.
+- The custom NL-to-SQL Databricks App (feature 009) — built and deployed
+  via the Databricks CLI, not the Databricks MCP, and without a Genie
+  Space anywhere in this project — is itself both this project's
+  consumption interface and its differentiator content; it MUST be
+  clearly documented as differentiator content in any written
+  deliverable, distinct from the required deliverables of features
+  002-008.
 
 ## Governance
 
@@ -166,4 +174,4 @@ Principles above before proceeding to the next phase. Complexity or
 deviation from Principle IV or VI MUST be justified in writing at the point
 it is introduced, not retroactively.
 
-**Version**: 1.1.1 | **Ratified**: 2026-07-22 | **Last Amended**: 2026-07-23
+**Version**: 1.1.3 | **Ratified**: 2026-07-22 | **Last Amended**: 2026-07-24
