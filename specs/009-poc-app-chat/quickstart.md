@@ -1,4 +1,4 @@
-# Quickstart: Validate POC App Chat — Consumo & Diferencial
+# Quickstart: Validate POC App Chat — Consumo
 
 Validates the 2 Independent Tests from spec.md. Depends only on
 `ifood_case.silver.yellow_taxi_trips` (features 004-006) already
@@ -24,7 +24,7 @@ databricks workspace import-dir src/app /Workspace/Users/<you>/apps/poc-app-chat
 
 databricks apps create --json '{
   "name": "poc-app-chat",
-  "description": "Chat NL-to-SQL sobre yellow_taxi_trips (diferencial, sem Genie)",
+  "description": "Chat NL-to-SQL sobre yellow_taxi_trips (POC, sem Genie)",
   "resources": [
     {"name": "sql-warehouse", "sql_warehouse": {"id": "<WAREHOUSE_ID>", "permission": "CAN_USE"}},
     {"name": "serving-endpoint", "serving_endpoint": {"name": "databricks-meta-llama-3-1-8b-instruct", "permission": "CAN_QUERY"}}
@@ -75,7 +75,7 @@ chat UI. Save all of them together in `src/app/examples.md`.
 
 **Expected outcome**: `src/app/examples.md` exists with at least 3
 distinct question → SQL → result → answer records, all captured from
-real app runs, clearly labeled as this feature's differentiator content
+real app runs, clearly labeled as this feature's POC/bonus content
 (FR-006), distinct from features 002-008's required deliverables.
 
 ## Step 4 — Confirm no upstream modification (FR-007)
@@ -99,7 +99,7 @@ feature's files.
       Portuguese answer, cross-checked against a direct SQL query
       (SC-001, FR-002)
 - [ ] Step 3 confirms `src/app/examples.md` has at least 3 real,
-      captured example interactions, clearly labeled as differentiator
+      captured example interactions, clearly labeled as POC/bonus
       content (SC-002, SC-003, FR-004, FR-005, FR-006)
 - [ ] Step 4 confirms `git status`/`git diff` show changes only under
       `src/app/` and `specs/009-poc-app-chat/` (SC-005,

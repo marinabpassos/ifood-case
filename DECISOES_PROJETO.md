@@ -269,14 +269,14 @@ dos resultados".
 - Se usar Databricks Jobs/Workflows para orquestrar, aproveitar o histórico de
   execução nativo em vez de duplicar tudo manualmente
 
-## 8. Agente de consulta em linguagem natural (diferencial do case) — REVISADO
+## 8. Agente de consulta em linguagem natural — REVISADO
 
 > Plano original (abaixo, riscado por completo): Genie Space em produção
 > + agente custom via Claude Code/MCP como experimento separado. Nenhum
 > dos dois foi construído como planejado — ver decisão final abaixo.
 > ~~Duas frentes, com papéis diferentes: **Genie Space (produção)**:
 > configurado sobre a tabela silver via UI do Databricks... **Agente
-> custom (diferencial/criatividade)**: construído com Claude Code + MCP
+> custom (criatividade)**: construído com Claude Code + MCP
 > do Databricks...~~
 
 **Decisão final (feature 009, `poc-app-chat`, 2026-07-23/24)**: um único
@@ -361,11 +361,15 @@ ponto de ser só uma task isolada.
 | 006 | Data Quality & Camada Silver | Aplica as regras de DQ definidas no profiling + o contrato (schema assert) sobre a bronze, escreve a tabela Delta silver tipada e limpa | 005 |
 | 007 | Observability da Pipeline | Tabela `_pipeline_run_log`, métricas de volume/schema por execução, lineage nativo do Unity Catalog (landing→bronze→silver), alerting por threshold | 006 |
 | 008 | Análises Analíticas | SQL/PySpark em `analysis/` respondendo as duas perguntas do case (média de `total_amount` por mês; média de `passenger_count` por hora em maio) | 006 |
-| 009 | Consumo & Diferencial (POC `poc-app-chat`) | ~~Genie Space + agente via MCP~~ — revisado durante a implementação para um único Databricks App (chat NL-to-SQL via Foundation Model), sem Genie, sem MCP. Ver §8 | 006 |
+| 009 | Consumo (POC `poc-app-chat`) | ~~Genie Space + agente via MCP~~ — revisado durante a implementação para um único Databricks App (chat NL-to-SQL via Foundation Model), sem Genie, sem MCP. Ver §8 | 006 |
 
 **Ordem sugerida**: 002 → 003 → 004 → 005 → 006, depois 007 e 008 podem
 correr em paralelo (ambas dependem só de 006), 009 por último (ou a qualquer
-momento após 006, se o tempo permitir adiantar o diferencial).
+momento após 006, se o tempo permitir adiantar o POC).
 
 Pendência solta, fora do fluxo de features (fazer antes de iniciar a 002):
-- [ ] Configurar conexão MCP do Databricks no Claude Code
+- [x] Configurar conexão MCP do Databricks no Claude Code — **superada**:
+  não foi feita uma conexão MCP dedicada; a abordagem final foi localizar
+  o Databricks CLI via PATH a cada sessão (WinGet install, sem MCP),
+  documentada em `CLAUDE.md`. Suficiente para todo o fluxo de features
+  002-009.

@@ -152,7 +152,7 @@ last and must never be confused with, or substitute for, the required
 answers. Directly serves the case's own "criatividade" evaluation
 criterion, matching this project's existing pattern of clearly labeling
 differentiator content separately from official deliverables (see
-`DECISOES_PROJETO.md`'s treatment of the roadmap's own diferencial
+`DECISOES_PROJETO.md`'s treatment of the roadmap's own POC
 feature).
 
 **Independent Test**: Open `analysis/` and confirm a daily trip-count

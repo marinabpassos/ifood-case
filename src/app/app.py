@@ -2,7 +2,7 @@
 ifood_case.silver.yellow_taxi_trips. Sem Genie Space em nenhum ponto
 (constitution v1.1.2) -- pergunta em portugues, resposta em portugues,
 gerada a partir de uma consulta SQL real executada no SQL Warehouse do
-projeto. Conteudo diferencial do case, nao um substituto das entregas
+projeto. POC deste case, nao um substituto das entregas
 obrigatorias (features 002-008).
 
 ATENCAO: isto e uma POC (prova de conceito), nao um produto pronto para
@@ -219,10 +219,10 @@ def responder(question: str, history) -> str:
 
 demo = gr.ChatInterface(
     fn=responder,
-    title="poc-app-chat — iFood Case (Consumo & Diferencial)",
+    title="poc-app-chat — iFood Case (POC)",
     description=(
         "⚠️ **POC (prova de conceito), não um produto pronto para "
-        "produção** — conteúdo diferencial deste case, não uma entrega "
+        "produção** — não é uma entrega "
         "obrigatória. Faça uma pergunta em português sobre as corridas "
         "de yellow táxi (Jan-Mai 2023) e receba uma resposta gerada a "
         "partir de uma consulta SQL real, sem escrever nenhum código. "

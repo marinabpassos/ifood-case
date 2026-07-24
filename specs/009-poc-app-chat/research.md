@@ -1,4 +1,4 @@
-# Phase 0 Research: POC App Chat — Consumo & Diferencial
+# Phase 0 Research: POC App Chat — Consumo
 
 **Input**: [spec.md](./spec.md) · Constitution `.specify/memory/constitution.md` ·
 `ifood_case.silver.yellow_taxi_trips` (features 004-006)
@@ -176,7 +176,7 @@ App) before planning began. This research phase resolves the
   it only supplies surrounding prose now, never the digits themselves.
 - **Alternatives considered**: Full structured conversation
   memory (a session store keyed by chat ID) — rejected as unnecessary
-  complexity for a differentiator prototype; a single prior turn's text
+  complexity for a POC prototype; a single prior turn's text
   is enough context for the kind of elliptical follow-up this surfaced,
   and keeps FR-008's "not required to persist... conversation history"
   intent intact (nothing is persisted; it's passed through, once, as
@@ -234,7 +234,7 @@ App) before planning began. This research phase resolves the
   question (spec SC-002: at least 3), each with the question text, the
   SQL the app actually generated for it, the executed result, and the
   formatted answer — all captured from a real run against the deployed
-  app (not hand-authored), clearly headed as differentiator content.
+  app (not hand-authored), clearly headed as POC/bonus content.
 - **Rationale**: Directly mirrors feature 008's `analysis/answers.md`
   pattern (real computed results, not hypothetical ones, saved as a
   versioned artifact) — this project's own established precedent for

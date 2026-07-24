@@ -1,10 +1,10 @@
 # poc-app-chat — Exemplos de Interação
 
-> ⚠️ **POC (prova de conceito), conteúdo diferencial/bonus deste case**
+> ⚠️ **POC (prova de conceito), conteúdo bônus deste case**
 > — não é uma das entregas obrigatórias (features 002-008) nem um
 > produto pronto para produção (ver "Limitações conhecidas da POC" em
 > `specs/009-poc-app-chat/spec.md`). Este app (`src/app/`) é o
-> diferencial "Consumo & Diferencial" do roadmap, substituindo o Genie
+> item "Consumo" do roadmap, substituindo o Genie
 > Space originalmente cogitado (ver `constitution.md` v1.1.2 e
 > `specs/009-poc-app-chat/spec.md`, seção Clarifications).
 

@@ -3,7 +3,7 @@
 description: "Task list template for feature implementation"
 ---
 
-# Tasks: POC App Chat — Consumo & Diferencial
+# Tasks: POC App Chat — Consumo
 
 **Input**: Design documents from `specs/009-poc-app-chat/`
 
@@ -80,7 +80,7 @@ returned that matches what the equivalent direct SQL query would produce.
 **Goal**: A curated set of real question → generated SQL → executed result →
 answer interactions, captured from the actually-deployed app (not
 hand-authored), saved as a versioned artifact clearly labeled as this
-feature's differentiator content.
+feature's POC/bonus content.
 
 **Independent Test**: Without opening Databricks, open the repository and
 confirm example questions and their actual returned answers are readable.
@@ -91,7 +91,7 @@ confirm example questions and their actual returned answers are readable.
 - [X] T012 [US2] For each example question from T011, capture the exact generated SQL (visible via `databricks apps logs ifood-consumo-diferencial --profile DEFAULT`, `[APP]` lines), the executed result, and the formatted Portuguese answer shown in the chat UI (quickstart.md Step 3; data-model.md's `Example Interaction` entity) — captured directly from the real function calls (same data `[APP]` logs would show) since results were produced by literally calling `generate_sql`/`execute_sql`/`format_answer` from `app.py`
 - [X] T013 [US2] Write `src/app/examples.md`: one section per captured example (question, generated SQL, executed result, formatted answer, UTC `captured_at` timestamp), headed with a clear "⚠️ Conteúdo diferencial" label distinguishing this feature from the required deliverables of features 002-008 (FR-004, FR-005, FR-006, spec SC-003 — same labeling discipline feature 008 used for its own bonus Prophet section) — includes a cross-check note: Exemplo 1's 28.29 exactly matches feature 008's own published `analysis/answers.md` figure for March 2023, computed independently by two different mechanisms
 
-**Checkpoint**: Both user stories complete — the app is deployed and answering real questions (US1), and its example interactions are documented as a reviewable, versioned artifact, clearly marked as differentiator content (US2).
+**Checkpoint**: Both user stories complete — the app is deployed and answering real questions (US1), and its example interactions are documented as a reviewable, versioned artifact, clearly marked as POC/bonus content (US2).
 
 ---
 
@@ -107,6 +107,8 @@ confirm example questions and their actual returned answers are readable.
 **Post-completion fix #2 (2026-07-24, same debug technique)**: fixed #1 revealed a second error on retry — `[INSUFFICIENT_PERMISSIONS] Insufficient privileges: User does not have USE CATALOG on Catalog 'ifood_case'`. The `resources` array's `sql-warehouse` entry only grants *compute* access (`CAN_USE` the warehouse) — it does not grant Unity Catalog *data* access, a separate permission system entirely. Every local verification (T010, the planning-time CLI probes) ran under the developer's own already-privileged PAT identity, so this gap was invisible until the app's own, narrower service-principal identity tried to read the table for the first time. Fixed with 3 explicit `GRANT` statements (`USE CATALOG` on `ifood_case`, `USE SCHEMA` on `ifood_case.silver`, `SELECT` on `ifood_case.silver.yellow_taxi_trips`, scoped tightly per FR-003) run against the warehouse with the developer's admin identity (research.md §3b) — confirms the exact gap `/speckit-analyze`'s finding E1 had already flagged (FR-003 coverage was "structural only") actually manifested in practice once a real end user exercised the app.
 
 **Post-completion fix #3 (2026-07-24, found by the user asking a real follow-up question)**: with both prior fixes live, the user asked "qual a receita total do período?" then "e a média mensal e diária?" as a natural follow-up. Two compounding bugs: (a) the second question, with zero context (FR-008's stateless-by-default design), fell back to a generic `AVG(total_amount)` (per-trip average) and reported the *same* number as both "monthly" and "daily" average — conceptually wrong, unrelated to the first question's topic; (b) independently, the *first* answer itself was off by ~10x — the LLM wrote "$43,4 milhões" in prose for a real value of $434,378,880.73, a scale/magnitude error from letting a small model restate a large float in natural language. Fixed both: passed the last chat turn's text as context to SQL generation (`build_context`/`generate_sql`'s new `context` param) plus a concrete worked SQL example (aggregate-then-average via scalar subqueries) in the system prompt, so "média mensal/diária" now correctly groups by month/day instead of averaging per-row; and stopped letting the LLM touch computed numbers at all — `format_value()` formats every figure deterministically in Python before the model ever sees it, with an explicit instruction to copy verbatim (research.md §3c). Re-verified locally against the real endpoint/warehouse with the exact 2-turn scenario: both answers now correct and internally consistent (monthly ≈ total÷5, daily ≈ total÷~151). `spec.md`'s Edge Cases and `src/app/examples.md` (new Exemplo 4) updated accordingly.
+
+**Post-completion terminology cleanup (2026-07-24, later same day, user request)**: beyond the rename below (which already fixed the app's technical name), the word "diferencial"/"differentiator" was still used throughout to *describe* the app — spec/plan/research/data-model/quickstart prose, this file's Goal/Checkpoint lines above, `README.md`, `DECISOES_PROJETO.md`, `constitution.md` (bumped to v1.1.4), `app.py`, `examples.md`. Reworded to "POC"/"POC content"/"bonus" everywhere it referred to this app. Left untouched, as historical record: this task list's own T007-T009/T012 command descriptions (which document literal commands run under the app's pre-rename name) and T013's quoted header text below, plus `spec.md`'s Input line and Clarifications log (see its new 2026-07-24 entry for the full rationale).
 
 **Post-completion rename (2026-07-24, user request)**: feature/app renamed end-to-end from "consumption-differentiator"/`ifood-consumo-diferencial` to **`poc-app-chat`** — branch (`git branch -m`), spec directory (`specs/009-poc-app-chat/`), `.specify/feature.json`, the Databricks App itself (old app deleted, new one created under the new name since app names are immutable — this minted a *new* service principal, `c477cb84-546b-43fd-a009-f3f27866b54e`, requiring the 3 Unity Catalog `GRANT`s from fix #2 to be re-run against the new identity before the app could read data again), the in-app Gradio title/description, `examples.md`, and every doc title in this feature directory. New URL: `https://poc-app-chat-3576264130915931.aws.databricksapps.com`. Explicit "POC, not production-ready" framing added throughout (spec.md's new "Limitações conhecidas da POC" section, the in-app description, `README.md`) per the user's explicit request that this never be mistaken for a finished deliverable. `README.md` updated with the live app link.
 

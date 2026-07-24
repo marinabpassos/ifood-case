@@ -1,4 +1,4 @@
-# Specification Quality Checklist: POC App Chat — Consumo & Diferencial
+# Specification Quality Checklist: POC App Chat — Consumo
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-07-23

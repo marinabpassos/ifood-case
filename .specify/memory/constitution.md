@@ -1,15 +1,15 @@
 <!--
 Sync Impact Report
 ===================
-Version change: 1.1.2 → 1.1.3
+Version change: 1.1.3 → 1.1.4
 Modified principles: none (wording-only correction, no principle redefined)
 Modified sections:
-  - Technology Stack & Environment Constraints — "Consumption" line now
-    names feature 009's app by its final name, `poc-app-chat`, and
-    flags it explicitly as a POC (not a finished product) -- the
-    feature was renamed end-to-end (branch, spec directory, the
-    deployed Databricks App itself, all docs) at the user's request on
-    2026-07-24, after the app was already built and in use.
+  - Development Workflow & Repository Structure — feature 009's app is
+    no longer labeled "differentiator content"; reworded to describe it
+    as a POC (proof of concept), consistent with the "Consumption" line
+    above and the user's explicit request (2026-07-24) that the app
+    never be framed with "diferencial"/"differentiator" language
+    anywhere it's described.
 Added sections: none
 Removed sections: none
 Templates requiring updates:
@@ -152,11 +152,11 @@ isn't earning its place for a case of this scope.
   `total_amount` across the fleet, and average `passenger_count` by hour of
   day for May — are delivered as versioned artifacts in `analysis/`, not
   ad hoc query results.
-- The custom NL-to-SQL Databricks App (feature 009) — built and deployed
-  via the Databricks CLI, not the Databricks MCP, and without a Genie
-  Space anywhere in this project — is itself both this project's
-  consumption interface and its differentiator content; it MUST be
-  clearly documented as differentiator content in any written
+- The custom NL-to-SQL Databricks App (feature 009, `poc-app-chat`) —
+  built and deployed via the Databricks CLI, not the Databricks MCP, and
+  without a Genie Space anywhere in this project — is itself this
+  project's consumption interface; it MUST be clearly documented as a
+  POC (proof of concept), not a finished product, in any written
   deliverable, distinct from the required deliverables of features
   002-008.
 
@@ -174,4 +174,4 @@ Principles above before proceeding to the next phase. Complexity or
 deviation from Principle IV or VI MUST be justified in writing at the point
 it is introduced, not retroactively.
 
-**Version**: 1.1.3 | **Ratified**: 2026-07-22 | **Last Amended**: 2026-07-24
+**Version**: 1.1.4 | **Ratified**: 2026-07-22 | **Last Amended**: 2026-07-24

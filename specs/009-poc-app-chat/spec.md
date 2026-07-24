@@ -1,4 +1,4 @@
-# Feature Specification: POC App Chat — Consumo & Diferencial
+# Feature Specification: POC App Chat — Consumo
 
 > ⚠️ **Isto é uma POC (prova de conceito), não um produto finalizado.**
 > Demonstra a viabilidade de um agente NL-to-SQL sobre a silver, mas
@@ -22,6 +22,7 @@
 - Q: With Genie gone, is the Databricks App one unified deliverable, or does a second, separate Claude-Code-driven agent prototype still exist alongside it (the roadmap's original two-part "production + differentiator" split)? → A: One deliverable. The Databricks App itself is both the consumption interface and the differentiator content — no second, separate agent.
 - Q: What language should the app's own content (chat UI text, example questions, formatted answers) be authored in? → A: Portuguese (PT-BR) — consistent with feature 008's precedent (`answers.md`, chart labels) for content aimed at the project's end business user.
 - Q (2026-07-24, post-implementation): Rename the feature/app from "consumption-differentiator" — user didn't like the name. → A: Renamed to **`poc-app-chat`** everywhere (branch, spec directory, Databricks App resource name, in-app title, all docs) and framed explicitly as a POC throughout, with a "known limitations" section added so it's never mistaken for a finished product. Link to the live app added to the repository's root `README.md`.
+- Q (2026-07-24, later same day): The rename above fixed the app's own name, but "diferencial"/"differentiator" was still used throughout to *describe* the app (spec/plan/research/data-model/quickstart prose, `README.md`, `DECISOES_PROJETO.md`, `constitution.md`, `app.py`, `examples.md`) — user asked for that word gone wherever it refers to the app, in either language. → A: Reworded to "POC"/"POC content"/"bonus" throughout living docs and prose (constitution bumped to v1.1.4, PATCH). Left untouched: this Clarifications log, the Input line above, and `tasks.md`'s already-completed task descriptions (T007-T009, T012-T013) that record literal commands run under the app's old name — historical record, not current framing. `specs/008-analytical-questions/*`'s own "differentiator" usage is unrelated (it labels that feature's own bonus Prophet analysis, not this app) and was left as-is.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -33,7 +34,7 @@ a correct answer — without writing SQL, opening a notebook, or asking a
 data engineer.
 
 **Why this priority**: This is this feature's entire consumption
-deliverable and its differentiator content at once (per Clarifications)
+deliverable and its POC/bonus content at once (per Clarifications)
 — a custom-built Databricks App with an NL-to-SQL chat backend, built
 and deployed end-to-end via the Databricks CLI (no Genie Space, no
 manual UI configuration step for Claude Code to hand off).
@@ -95,10 +96,10 @@ answers are readable.
    their results are recorded, **Then** each question, the SQL the app
    generated, and its actual returned answer are saved together as a
    versioned artifact in the repository.
-2. **Given** this feature is explicitly the case's differentiator
-   content (roadmap: "Consumo & Diferencial"), **When** the artifact is
-   delivered, **Then** it is clearly labeled as such, distinct from the
-   required deliverables of features 002-008.
+2. **Given** this feature is explicitly this case's POC/bonus content
+   (roadmap: "Consumo"), **When** the artifact is delivered, **Then**
+   it is clearly labeled as such, distinct from the required
+   deliverables of features 002-008.
 
 ---
 
@@ -153,8 +154,8 @@ answers are readable.
   returned answers) MUST be saved as versioned artifacts in the
   repository, not left only as live Databricks UI state.
 - **FR-006**: This feature's deliverable MUST be clearly documented as
-  this project's differentiator content ("Consumo & Diferencial" per the
-  roadmap), distinct from the required deliverables of features 002-008.
+  this project's POC/bonus content ("Consumo" per the roadmap), distinct
+  from the required deliverables of features 002-008.
 - **FR-007**: The app and its backend MUST NOT modify
   `ifood_case.silver.yellow_taxi_trips`, its contract, or any upstream
   pipeline stage (features 002-008) — read-only only.
@@ -185,8 +186,8 @@ answers are readable.
   natural-language questions, with each question's generated SQL and
   executed result documented.
 - **SC-003**: A reader of the delivered documentation can immediately
-  tell this feature is differentiator/experimental content (per the
-  roadmap's "Consumo & Diferencial"), not one of the case's required
+  tell this feature is POC/experimental content (per the
+  roadmap's "Consumo"), not one of the case's required
   deliverables.
 - **SC-004**: The app's example results can be reviewed directly from
   files in the repository, with no live Databricks access required.

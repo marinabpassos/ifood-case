@@ -1,4 +1,4 @@
-# Phase 1 Data Model: POC App Chat — Consumo & Diferencial
+# Phase 1 Data Model: POC App Chat — Consumo
 
 No new table or schema — this feature is a read-only consumption app.
 Both entities below are runtime/documentation-level records, not
@@ -45,6 +45,6 @@ One record per curated example question (spec SC-002: at least 3), captured from
 **Validation rules**:
 - Every field MUST come from one real, successful run against the deployed app (data-model's `NL-to-SQL Chat App` entity) — no field is invented or backfilled from what the app "should" produce (spec Edge Cases: a failing candidate question is dropped from the curated set, not faked into a passing one).
 - At least 3 distinct `Example Interaction` records MUST exist (SC-002).
-- The full set of records, saved together, MUST be clearly labeled as this feature's differentiator content (FR-006), distinct from the required deliverables of features 002-008.
+- The full set of records, saved together, MUST be clearly labeled as this feature's POC/bonus content (FR-006), distinct from the required deliverables of features 002-008.
 
 **Relationships**: Each record is produced by one interaction with the `NL-to-SQL Chat App` entity above. The saved set (`src/app/examples.md`, research.md §6) is this feature's User Story 2 deliverable — reviewable without live Databricks access (SC-004).
