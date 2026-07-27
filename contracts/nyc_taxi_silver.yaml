@@ -9,61 +9,62 @@ table:
   owner: marinabpassos@gmail.com
 
 grain:
-  statement: "One row = one trip event (one yellow taxi ride)."
+  statement: "Uma linha = um evento de corrida (uma corrida de yellow táxi)."
   uniqueness_note: >
-    No formal uniqueness constraint (primary key) is enforced on this
-    6-column schema alone. Two distinct trips could coincidentally share
-    identical values across all 6 columns. The only inherited uniqueness
-    guarantee comes from the bronze layer's full-row dedup over its 19
-    source columns (feature 004) -- a stronger check than anything
-    re-derivable from silver's narrower schema.
+    Nenhuma restrição formal de unicidade (chave primária) é imposta
+    apenas sobre este schema de 6 colunas. Duas corridas distintas
+    poderiam, por coincidência, ter valores idênticos nas 6 colunas. A
+    única garantia de unicidade herdada vem do dedup de linha completa da
+    camada bronze sobre suas 19 colunas de origem (feature 004) -- uma
+    checagem mais forte do que qualquer coisa re-derivável do schema mais
+    estreito da silver.
 
 columns:
   - name: VendorID
     type: integer
     nullable: false
     description: >
-      Identifies the TPEP provider that supplied the trip record (the
-      taxi's dispatch/metering technology vendor, not an individual taxi
-      or driver).
+      Identifica o provedor TPEP que forneceu o registro da corrida (o
+      fornecedor da tecnologia de despacho/medição do táxi, não um táxi
+      ou motorista individual).
   - name: passenger_count
     type: integer
     nullable: false
     description: >
-      Number of passengers in the vehicle for the trip, as reported by
-      the driver. Rows with a null or zero passenger count are dropped
-      before reaching silver (see quality_rules), so every row here has
-      a positive count.
+      Número de passageiros no veículo durante a corrida, conforme
+      informado pelo motorista. Linhas com contagem de passageiros nula
+      ou zero são descartadas antes de chegar à silver (ver
+      quality_rules), então toda linha aqui tem contagem positiva.
   - name: total_amount
     type: decimal
     nullable: false
     description: >
-      Total amount charged to the passenger, including fare, taxes,
-      tolls, and surcharges. Rows with a negative or zero amount are
-      dropped before reaching silver (see quality_rules), so every row
-      here is a genuine positive charge.
+      Valor total cobrado do passageiro, incluindo tarifa, taxas,
+      pedágios e sobretaxas. Linhas com valor negativo ou zero são
+      descartadas antes de chegar à silver (ver quality_rules), então
+      toda linha aqui é uma cobrança positiva genuína.
   - name: tpep_pickup_datetime
     type: timestamp
     nullable: false
     description: >
-      Date and time the meter was engaged (trip start). Guaranteed to
-      fall within Jan 1 - May 31, 2023 and to be before
-      tpep_dropoff_datetime (see quality_rules).
+      Data e hora em que o taxímetro foi acionado (início da corrida).
+      Garantida dentro do intervalo de 1 de jan a 31 de mai de 2023 e
+      anterior a tpep_dropoff_datetime (ver quality_rules).
   - name: tpep_dropoff_datetime
     type: timestamp
     nullable: false
     description: >
-      Date and time the meter was disengaged (trip end). Guaranteed to
-      fall within Jan 1 - May 31, 2023 and to be after
-      tpep_pickup_datetime (see quality_rules).
+      Data e hora em que o taxímetro foi desligado (fim da corrida).
+      Garantida dentro do intervalo de 1 de jan a 31 de mai de 2023 e
+      posterior a tpep_pickup_datetime (ver quality_rules).
   - name: _silver_processed_at
     type: timestamp
     nullable: false
     description: >
-      Timestamp this row was written by the silver ingestion pipeline
-      (feature 006). Silver's own audit column -- not inherited from
-      bronze's _source_file/_ingested_at, both of which are dropped
-      (2026-07-23 clarification).
+      Timestamp em que esta linha foi escrita pelo pipeline de ingestão
+      da silver (feature 006). Coluna de auditoria própria da silver --
+      não herdada de _source_file/_ingested_at da bronze, ambas
+      descartadas (esclarecimento de 2026-07-23).
 
 quality_rules:
   - id: total_amount_negative_or_zero
@@ -71,67 +72,70 @@ quality_rules:
     policy: drop
     counting: independent
     rationale: >
-      A negative or zero total_amount cannot represent a real fare
-      charged to a passenger; keeping these rows would bias the case's
-      first analytical question (average total_amount per month)
-      downward with values that don't reflect genuine fleet revenue.
+      Um total_amount negativo ou zero não pode representar uma tarifa
+      real cobrada de um passageiro; manter essas linhas enviesaria para
+      baixo a primeira pergunta analítica do case (média de total_amount
+      por mês), com valores que não refletem a receita genuína da frota.
   - id: passenger_count_null_or_zero
     condition: "passenger_count IS NULL OR passenger_count = 0"
     policy: drop
     counting: independent
     rationale: >
-      A taxi trip with zero or unknown passengers is a data-entry
-      defect, not a valid ride; keeping these rows would bias the case's
-      second analytical question (average passengers by hour) toward an
-      artificially low count.
+      Uma corrida de táxi com zero passageiros ou passageiros
+      desconhecidos é um defeito de entrada de dados, não uma corrida
+      válida; manter essas linhas enviesaria a segunda pergunta analítica
+      do case (média de passageiros por hora) para uma contagem
+      artificialmente baixa.
   - id: dropoff_before_pickup
     condition: "tpep_dropoff_datetime < tpep_pickup_datetime"
     policy: drop
     counting: independent
     rationale: >
-      A trip that ends before it starts is physically impossible and
-      indicates a timestamp recording error, not a real ride duration.
+      Uma corrida que termina antes de começar é fisicamente impossível e
+      indica um erro de registro de timestamp, não uma duração real de
+      corrida.
   - id: out_of_range_dates
     condition: "tpep_pickup_datetime < '2023-01-01' OR tpep_dropoff_datetime >= '2023-06-01'"
     policy: drop
     counting: independent
     rationale: >
-      This case's scope is exactly Jan-May 2023; records that leak in
-      from adjacent periods are outside the analysis window and would
-      distort both analytical questions if included.
+      O escopo deste case é exatamente Jan-Mai 2023; registros que vazam
+      de períodos adjacentes estão fora da janela de análise e
+      distorceriam as duas perguntas analíticas se incluídos.
   - id: duplicates
     policy: resolved_upstream
     rationale: >
-      Full-row duplicates are already removed during bronze ingestion
-      (feature 004, 0 found across all 5 months) -- silver inherits a
-      duplicate-free input and requires no additional dedup logic of its
-      own.
+      Duplicatas de linha completa já são removidas durante a ingestão
+      da bronze (feature 004, 0 encontradas nos 5 meses) -- a silver
+      herda um input livre de duplicatas e não precisa de nenhuma lógica
+      de dedup própria.
 
 total_dropped_metric_note: >
-  "Total rows dropped" (rows failing at least one of the four drop rules
-  above, counted once each via logical OR, no double-counting) is a
-  separate metric from the four independent per-rule counts above, which
-  may overlap when a row fails more than one rule simultaneously
-  (2026-07-23 clarification). Feature 006 MUST report both.
+  "Total de linhas descartadas" (linhas que falham em pelo menos uma das
+  quatro regras de drop acima, contadas uma vez cada via OR lógico, sem
+  dupla contagem) é uma métrica separada das quatro contagens
+  independentes por regra acima, que podem se sobrepor quando uma linha
+  falha em mais de uma regra simultaneamente (esclarecimento de
+  2026-07-23). A feature 006 DEVE reportar as duas.
 
 sla:
   frequency: monthly
-  latency_target: "Within 24 hours of month close"
+  latency_target: "Em até 24 horas após o fechamento do mês"
   note: >
-    Illustrative only -- this project's actual load is a single
-    historical batch covering Jan-May 2023, not a recurring pipeline.
-    This section documents the cadence the pipeline would follow if it
-    were operated on an ongoing basis.
+    Apenas ilustrativo -- a carga real deste projeto é um único lote
+    histórico cobrindo Jan-Mai 2023, não um pipeline recorrente. Esta
+    seção documenta a cadência que o pipeline seguiria se fosse operado
+    de forma contínua.
 
 versioning:
   current_version: v1
   breaking_change_policy:
     major: >
-      Removing or renaming a column, narrowing a column's type, or
-      changing a data-quality rule's policy (e.g. drop -> keep) requires
-      a new MAJOR version.
+      Remover ou renomear uma coluna, estreitar o tipo de uma coluna ou
+      mudar a política de uma regra de qualidade (ex.: drop -> keep) exige
+      uma nova versão MAJOR.
     minor: >
-      Adding a new optional column requires a new MINOR version.
+      Adicionar uma nova coluna opcional exige uma nova versão MINOR.
     patch: >
-      Wording or description-only edits (no schema or rule change)
-      require only a new PATCH version.
+      Edições apenas de redação ou descrição (sem mudança de schema ou
+      regra) exigem apenas uma nova versão PATCH.

@@ -1,26 +1,27 @@
 # Databricks notebook source
-"""Build the silver Yellow Taxi table from bronze and the data contract.
+"""Constrói a tabela silver de Yellow Taxi a partir da bronze e do contrato de dados.
 
-Implements spec 006's FR-001 through FR-008:
+Implementa da spec 006: FR-001 a FR-008:
 
-- FR-001/FR-002: reads only `ifood_case.bronze.yellow_taxi_trips`, and
-  asserts its 5 business columns are type-family compatible with
-  `contracts/nyc_taxi_silver.yaml` before doing anything else --
-  `_silver_processed_at` is excluded (it has no bronze equivalent; this
-  feature adds it fresh).
-- FR-003: loads the contract at runtime and evaluates each of the 4 drop
-  rules independently against the full, unfiltered bronze input via the
-  contract's own `condition` string (`F.expr(...)`) -- not a hand
-  -written Python re-encoding of the same logic (research.md decisions
-  1-2).
-- FR-004: no duplicate-detection logic here -- the `duplicates` rule's
-  `resolved_upstream` policy is a no-op at this layer.
-- FR-005/FR-006: writes exactly the contract's 6 columns (5 business
-  columns unchanged + a fresh `_silver_processed_at`), no bronze
-  passthrough or bronze metadata column.
-- FR-007: reports rows read/written, the 4 independent counts, and one
-  non-overlapping total-dropped count.
-- FR-008: never writes to `contracts/nyc_taxi_silver.yaml` -- read-only.
+- FR-001/FR-002: lê apenas `ifood_case.bronze.yellow_taxi_trips` e garante
+  que suas 5 colunas de negócio são compatíveis em família de tipo com
+  `contracts/nyc_taxi_silver.yaml` antes de qualquer outra coisa --
+  `_silver_processed_at` é excluída (não tem equivalente na bronze; esta
+  feature a adiciona do zero).
+- FR-003: carrega o contrato em runtime e avalia cada uma das 4 regras de
+  drop de forma independente contra o input completo e não filtrado da
+  bronze, via a própria string `condition` do contrato (`F.expr(...)`) --
+  não uma reimplementação manual da mesma lógica em Python (research.md
+  decisões 1-2).
+- FR-004: nenhuma lógica de detecção de duplicatas aqui -- a política
+  `resolved_upstream` da regra `duplicates` é um no-op nesta camada.
+- FR-005/FR-006: escreve exatamente as 6 colunas do contrato (as 5
+  colunas de negócio inalteradas + uma `_silver_processed_at` nova), sem
+  passthrough da bronze nem coluna de metadados da bronze.
+- FR-007: reporta linhas lidas/escritas, as 4 contagens independentes e
+  uma contagem total de descartes sem sobreposição.
+- FR-008: nunca escreve em `contracts/nyc_taxi_silver.yaml` -- somente
+  leitura.
 """
 
 import json
@@ -36,9 +37,9 @@ BRONZE_SCHEMA = "bronze"
 BRONZE_TABLE = "yellow_taxi_trips"
 SILVER_SCHEMA = "silver"
 
-# Feature 007: observability. Same schema/helpers duplicated in
-# src/bronze/ingest_bronze.py (research.md decision 2 - self-contained
-# scripts, no shared importable module).
+# Feature 007: observability. Mesmo schema/helpers duplicados em
+# src/bronze/ingest_bronze.py (research.md decisão 2 - scripts
+# autocontidos, sem módulo compartilhado importável).
 RUN_LOG_TABLE = "ifood_case.silver._pipeline_run_log"
 ALERT_THRESHOLD = 0.01
 
@@ -56,7 +57,7 @@ LOG_SCHEMA = T.StructType([
 
 
 def check_alerts(named_counts: dict, rows_read: int) -> list:
-    """FR-004: >1% of rows_read for any named count triggers a visible alert."""
+    """FR-004: >1% de rows_read em qualquer contagem nomeada dispara um alerta visível."""
     if not rows_read:
         return []
     alerts = []
@@ -70,7 +71,7 @@ def check_alerts(named_counts: dict, rows_read: int) -> list:
 
 
 def write_run_log(spark, entry: dict) -> None:
-    """FR-002/FR-003: append one row to _pipeline_run_log, success or failure."""
+    """FR-002/FR-003: adiciona uma linha em _pipeline_run_log, com sucesso ou falha."""
     row = {
         "pipeline_stage": entry["pipeline_stage"],
         "executed_at": entry["executed_at"],
@@ -88,13 +89,13 @@ def write_run_log(spark, entry: dict) -> None:
     for alert in row["alerts"]:
         print(f"ALERT [{entry['pipeline_stage']}]: {alert}")
 
-# The contract lives in the repo (contracts/nyc_taxi_silver.yaml); this
-# script runs in the Databricks workspace, so it reads the copy uploaded
-# alongside it (see quickstart.md Step 1).
+# O contrato vive no repo (contracts/nyc_taxi_silver.yaml); este script
+# roda no workspace do Databricks, então lê a cópia subida junto dele
+# (ver quickstart.md Passo 1).
 CONTRACT_WORKSPACE_PATH = "/Workspace/Users/marinabpassos@gmail.com/ifood_case/nyc_taxi_silver.yaml"
 
-# Maps the contract's business-level type names to the same type-family
-# vocabulary already used by schema_check.py/ingest_bronze.py.
+# Mapeia os nomes de tipo em nível de negócio do contrato para o mesmo
+# vocabulário de família de tipo já usado por schema_check.py/ingest_bronze.py.
 CONTRACT_TYPE_TO_FAMILY = {
     "integer": "integer",
     "decimal": "floating",
@@ -124,12 +125,12 @@ def load_contract() -> dict:
 
 
 def assert_schema_compatible(bronze_schema, contract: dict) -> None:
-    """FR-002: the 5 business columns' type families must match the contract."""
+    """FR-002: as famílias de tipo das 5 colunas de negócio precisam bater com o contrato."""
     bronze_families = {field.name: type_family(field.dataType) for field in bronze_schema}
     for column in contract["columns"]:
         name = column["name"]
         if name == "_silver_processed_at":
-            continue  # added fresh here -- no bronze equivalent (research.md SS3)
+            continue  # adicionada do zero aqui -- sem equivalente na bronze (research.md SS3)
         expected_family = CONTRACT_TYPE_TO_FAMILY[column["type"]]
         actual_family = bronze_families.get(name)
         if actual_family != expected_family:
@@ -141,11 +142,11 @@ def assert_schema_compatible(bronze_schema, contract: dict) -> None:
 
 
 def evaluate_rules(df, contract: dict):
-    """FR-003: one boolean column per drop rule, against the full unfiltered input."""
+    """FR-003: uma coluna booleana por regra de drop, contra o input completo não filtrado."""
     rule_columns = {}
     for rule in contract["quality_rules"]:
         if rule["policy"] != "drop":
-            continue  # duplicates: resolved_upstream -- no condition to evaluate (FR-004)
+            continue  # duplicates: resolved_upstream -- sem condição a avaliar (FR-004)
         column_name = f"_fails_{rule['id']}"
         df = df.withColumn(column_name, F.expr(rule["condition"]))
         rule_columns[rule["id"]] = column_name
@@ -227,10 +228,11 @@ if __name__ == "__main__":
             "alerts": alerts,
         })
     except Exception:
-        # NOTE: dbutils.notebook.exit() below raises its own internal
-        # control-flow exception on success -- it MUST stay outside this
-        # try block, or every successful run also logs a spurious
-        # "failed" row (found by actually running this, feature 007).
+        # NOTA: dbutils.notebook.exit() abaixo levanta sua própria exceção
+        # interna de controle de fluxo em caso de sucesso -- ele PRECISA
+        # ficar fora deste bloco try, ou toda execução bem-sucedida
+        # também registra uma linha "failed" espúria (descoberto rodando
+        # isto de verdade, feature 007).
         write_run_log(spark, {
             "pipeline_stage": "silver",
             "executed_at": executed_at,

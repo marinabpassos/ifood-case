@@ -1,6 +1,6 @@
--- Average total_amount charged per month, across the whole yellow-taxi
--- fleet (all rows in the silver table, no additional filtering).
--- Answers the case brief's first analytical question.
+-- Média de total_amount cobrado por mês, considerando toda a frota de
+-- yellow táxi (todas as linhas da tabela silver, sem filtragem adicional).
+-- Responde à primeira pergunta analítica do enunciado do case.
 SELECT
   date_format(tpep_pickup_datetime, 'yyyy-MM') AS month,
   ROUND(AVG(total_amount), 2) AS avg_total_amount,

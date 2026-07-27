@@ -1,11 +1,12 @@
 # Databricks notebook source
-"""Full-column schema comparison across the 5 monthly bronze files.
+"""Comparação de schema, coluna a coluna, entre os 5 arquivos mensais da bronze.
 
-Implements spec 003's FR-001, FR-009, FR-010: every column (not just the
-5 required ones) is compared across all 5 months. Column names are
-matched case-insensitively; types are grouped into families rather than
-requiring an exact match (research.md, decisions 2 and 6). A deviation in
-a required column is `critical`; any other deviation is `informational`.
+Implementa da spec 003: FR-001, FR-009, FR-010 -- toda coluna (não só as
+5 obrigatórias) é comparada entre os 5 meses. Nomes de coluna são
+comparados de forma case-insensitive; os tipos são agrupados em famílias
+em vez de exigir correspondência exata (research.md, decisões 2 e 6). Um
+desvio em coluna obrigatória é `critical`; qualquer outro desvio é
+`informational`.
 """
 
 import json

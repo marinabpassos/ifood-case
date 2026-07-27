@@ -1,10 +1,10 @@
 # Databricks notebook source
-"""Reachability probe for the NYC TLC data source (spec FR-001).
+"""Sonda de acessibilidade da fonte de dados NYC TLC (spec FR-001).
 
-One representative request against the shared NYC TLC CloudFront domain
-stands for all 5 monthly files (research.md, decision 1) -- Free
-Edition's network policy is enforced at the domain level, not per file
-(spec FR-001, Clarifications 2026-07-22).
+Uma requisição representativa contra o domínio CloudFront compartilhado
+da NYC TLC vale por todos os 5 arquivos mensais (research.md, decisão 1)
+-- a política de rede da Free Edition é aplicada no nível de domínio, não
+por arquivo (spec FR-001, Clarifications 2026-07-22).
 """
 
 import json
