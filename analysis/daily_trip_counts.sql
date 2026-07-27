@@ -2,7 +2,7 @@
 -- whole yellow-taxi fleet, no additional filtering beyond what the
 -- silver table already guarantees.
 -- Bonus/differentiator input for the Prophet trend + weekly-seasonality
--- decomposition (analysis/generate_answers.py) -- not one of the case
+-- decomposition (analysis/analise.py) -- not one of the case
 -- brief's two required questions.
 SELECT
   date(tpep_pickup_datetime) AS trip_date,

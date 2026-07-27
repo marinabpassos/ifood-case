@@ -12,16 +12,56 @@ completo das decisões técnicas está em [`DECISOES_PROJETO.md`](DECISOES_PROJE
 
 Modelo em camadas (medalhão simplificado), processado em **PySpark** e
 persistido em **Delta Lake**, catalogado via **Unity Catalog**
-(Databricks Free Edition):
+(Databricks Free Edition). São **três camadas distintas**, cada uma em
+seu próprio schema do catalog `ifood_case`:
 
-- **Landing / bronze**: arquivos parquet originais, como chegaram.
-- **Consumo / silver**: tabela Delta gerenciada, tipada e limpa, com um
-  contrato de dados formal versionado antes da escrita (ver `contracts/`).
+### 1. Landing — `ifood_case.landing.yellow_taxi_raw` (Unity Catalog Volume)
 
-Data profiling e regras de qualidade de dados são etapas obrigatórias na
-transição bronze → silver, e cada execução do pipeline é instrumentada
-(volume, schema, lineage) — ver `DECISOES_PROJETO.md` §5-§7 para o
-detalhamento dessas regras.
+Os 5 arquivos parquet mensais (Yellow Taxi, Jan-Mai/2023) baixados
+direto da fonte NYC TLC, **byte a byte como chegaram** — nenhuma
+transformação. A ingestão verifica cada arquivo: não vazio, legível via
+Spark, sem outlier de tamanho entre os meses, e tamanho batendo com o
+`Content-Length` HTTP da fonte (prova de que nada foi alterado).
+Código em `src/ingestion/` (feature 002).
+
+### 2. Bronze — `ifood_case.bronze.yellow_taxi_trips` (tabela Delta gerenciada)
+
+Ingestão **1:1** da landing para Delta, **sem nenhuma regra de negócio**
+— só tratamento técnico: cast de schema para tipos consistentes entre
+meses (`passenger_count`/`RatecodeID` chegam ora float ora int nos dados
+originais da NYC TLC), colunas técnicas de ingestão (`_source_file`,
+`_ingested_at`) e deduplicação de linhas 100% idênticas. Resultado:
+16.186.386 linhas, 0 duplicatas. Código em `src/bronze/` (feature 004).
+
+### 3. Silver — `ifood_case.silver.yellow_taxi_trips` (tabela Delta gerenciada)
+
+Camada de consumo. Lê da bronze, valida o schema contra o contrato de
+dados versionado (`contracts/nyc_taxi_silver.yaml`) **antes de escrever**
+e aplica as 4 regras de qualidade de negócio, todas com política `drop` e
+justificativa no contrato:
+
+- `total_amount` ≤ 0 (não é uma tarifa real);
+- `passenger_count` nulo ou zero (defeito de registro);
+- `tpep_dropoff_datetime` anterior ao `tpep_pickup_datetime` (duração negativa);
+- datas fora da janela Jan-Mai/2023 (vazamento de meses adjacentes).
+
+Entrega 6 colunas tipadas e limpas, prontas para análise sem filtragem
+adicional. Código em `src/silver/` + `src/contracts/` (features 005-006).
+
+### Etapas transversais
+
+- **Data profiling / EDA obrigatório** (`src/profiling/`, feature 003):
+  antes de qualquer transformação, mede volumetria por mês, schema real
+  vs. esperado, nulos e distribuições das colunas obrigatórias. É o que
+  fundamenta as 4 regras de qualidade acima — as regras não são
+  arbitrárias, cada uma sai de um achado do profiling.
+- **Observability** (feature 007): cada execução de bronze e silver
+  registra uma linha em `ifood_case.silver._pipeline_run_log` (volume
+  lido/escrito, contagem por regra de qualidade, status, duração, alerta
+  quando uma regra descarta > 1% das linhas), somada ao lineage nativo do
+  Unity Catalog (landing → bronze → silver).
+
+Detalhamento completo dessas etapas em `DECISOES_PROJETO.md` §5-§7.
 
 ## Estrutura do Repositório
 
@@ -193,20 +233,49 @@ databricks jobs submit --json '{"tasks":[{"task_key":"analise","notebook_task":{
 Resultado completo em [`analysis/answers.md`](analysis/answers.md). Passo
 a passo completo em `specs/008-analytical-questions/quickstart.md`.
 
-## Perguntas Analíticas Respondidas
+## Análise dos Dados
+
+### Análise exploratória (EDA)
+
+Antes de qualquer resposta analítica, a camada de consumo passou por uma
+etapa formal de profiling sobre os dados crus (feature 003,
+`src/profiling/`): volumetria por mês, comparação de schema entre os 5
+arquivos (que revelou o drift `float`↔`int` de `passenger_count`/
+`RatecodeID` tratado na bronze), taxas de nulos e estatísticas
+descritivas de `total_amount`/`passenger_count`. Foi essa EDA que
+quantificou e justificou cada uma das 4 regras de qualidade aplicadas na
+silver — resultados em
+[`specs/003-data-profiling/findings.md`](specs/003-data-profiling/findings.md).
+
+### Perguntas analíticas respondidas
 
 Calculadas diretamente sobre `ifood_case.silver.yellow_taxi_trips`
 (features 004-006), sem filtragem ou limpeza adicional — a tabela já
-está pronta para análise. Detalhes completos (tabelas mês a mês/hora a
-hora, gráficos) em [`analysis/answers.md`](analysis/answers.md).
+está pronta para análise. Números completos e gráficos em
+[`analysis/answers.md`](analysis/answers.md).
 
-1. **Média de `total_amount` por mês** — sobe de ~$27.46 em janeiro para
-   ~$29.45 em maio, com uma pequena queda em fevereiro. Query:
-   [`analysis/avg_total_amount_by_month.sql`](analysis/avg_total_amount_by_month.sql).
-2. **Média de `passenger_count` por hora do dia, em maio** — varia pouco
-   ao longo do dia (entre 1.26 e 1.46), mais baixa no início da manhã
-   (hora 6) e mais alta de madrugada (hora 2). Query:
-   [`analysis/avg_passenger_count_by_hour_may.sql`](analysis/avg_passenger_count_by_hour_may.sql).
+**1. Média de `total_amount` por mês** — Query:
+[`analysis/avg_total_amount_by_month.sql`](analysis/avg_total_amount_by_month.sql)
+
+| Mês | Média `total_amount` | Nº de corridas |
+|---|---|---|
+| 2023-01 | $27.46 | 2.918.145 |
+| 2023-02 | $27.37 | 2.764.536 |
+| 2023-03 | $28.29 | 3.227.403 |
+| 2023-04 | $28.78 | 3.110.368 |
+| 2023-05 | $29.45 | 3.318.965 |
+
+Tendência de alta ao longo dos 5 meses (~$27.46 → ~$29.45), com uma
+pequena queda em fevereiro.
+
+**2. Média de `passenger_count` por hora do dia, em maio** — Query:
+[`analysis/avg_passenger_count_by_hour_may.sql`](analysis/avg_passenger_count_by_hour_may.sql)
+
+Varia pouco ao longo do dia (entre 1.26 e 1.46 passageiros por corrida),
+mais baixa no início da manhã (hora 6, ~1.26) e mais alta de madrugada
+(hora 2, ~1.46) — sem picos de corridas com múltiplos passageiros em
+nenhuma hora específica. Tabela hora a hora em
+[`analysis/answers.md`](analysis/answers.md).
 
 Ambas as queries são standalone, rodáveis por qualquer pessoa com acesso
 ao SQL Warehouse — sem depender de notebook. Um notebook Databricks
