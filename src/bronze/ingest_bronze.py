@@ -1,29 +1,31 @@
 # Databricks notebook source
-"""Ingest the 5 landing-zone files into the bronze Delta table.
+"""Ingere os 5 arquivos da landing zone na tabela Delta bronze.
 
-Implements spec 004's FR-002 through FR-008 (User Stories 2-4):
+Implementa da spec 004: FR-002 a FR-008 (User Stories 2-4):
 
-- FR-008 (US2): asserts every month's schema is consistent with the others
-  except for the two columns feature 003 already found drifting
-  (`passenger_count`, `ratecodeid`) -- this cross-month check is
-  equivalent to comparing against feature 003's documented baseline,
-  since that baseline *is* "identical across months except these two
-  columns" (research.md, decision 6). Any other deviation fails the job.
-- FR-003 (US2): casts the two drifted columns to one consistent type
-  (research.md, decision 2).
-- FR-002 (US2): unions all 5 months with `allowMissingColumns=False`
-  (research.md, decision 3) -- no column is expected to be missing.
-- FR-004 (US2): adds `_source_file` (captured per month, before the union,
-  via the `_metadata.file_name` hidden column -- `input_file_name()` is
-  not supported on Unity Catalog-governed compute, confirmed at runtime)
-  and a single `_ingested_at` value for the whole batch (research.md,
-  decision 4).
-- FR-005 (US3): deduplicates on the original source columns only, via an
-  explicit `subset`, so the two metadata columns can never mask a real
-  duplicate (research.md, decision 4).
-- FR-006 (US4): no business data-quality rule is applied anywhere here --
-  only the technical dedup above.
-- FR-007 (US3): reports rows read, rows written, and duplicates removed.
+- FR-008 (US2): garante que o schema de cada mês é consistente com os
+  demais, exceto pelas duas colunas que a feature 003 já achou com drift
+  (`passenger_count`, `ratecodeid`) -- essa checagem cruzada entre meses
+  equivale a comparar contra o baseline documentado da feature 003, já
+  que esse baseline *é* "idêntico entre os meses, exceto essas duas
+  colunas" (research.md, decisão 6). Qualquer outro desvio faz o job
+  falhar.
+- FR-003 (US2): faz cast das duas colunas com drift para um tipo
+  consistente (research.md, decisão 2).
+- FR-002 (US2): une os 5 meses com `allowMissingColumns=False`
+  (research.md, decisão 3) -- não se espera que falte nenhuma coluna.
+- FR-004 (US2): adiciona `_source_file` (capturado por mês, antes do
+  union, via a coluna oculta `_metadata.file_name` -- `input_file_name()`
+  não é suportado em compute governado por Unity Catalog, confirmado em
+  runtime) e um único valor de `_ingested_at` para o lote inteiro
+  (research.md, decisão 4).
+- FR-005 (US3): deduplica apenas nas colunas originais da fonte, via um
+  `subset` explícito, para que as duas colunas de metadados nunca possam
+  mascarar uma duplicata real (research.md, decisão 4).
+- FR-006 (US4): nenhuma regra de qualidade de negócio é aplicada aqui --
+  só o dedup técnico acima.
+- FR-007 (US3): reporta linhas lidas, linhas escritas e duplicatas
+  removidas.
 """
 
 import json
@@ -41,9 +43,9 @@ TABLE = "yellow_taxi_trips"
 BASE_PATH = f"/Volumes/{CATALOG}/{LANDING_SCHEMA}/{VOLUME}"
 MONTHS = ["01", "02", "03", "04", "05"]
 
-# Feature 007: observability. Same schema/helpers duplicated in
-# src/silver/build_silver.py (research.md decision 2 - self-contained
-# scripts, no shared importable module).
+# Feature 007: observability. Mesmo schema/helpers duplicados em
+# src/silver/build_silver.py (research.md decisão 2 - scripts
+# autocontidos, sem módulo compartilhado importável).
 RUN_LOG_TABLE = "ifood_case.silver._pipeline_run_log"
 ALERT_THRESHOLD = 0.01
 
@@ -61,7 +63,7 @@ LOG_SCHEMA = T.StructType([
 
 
 def check_alerts(named_counts: dict, rows_read: int) -> list:
-    """FR-004: >1% of rows_read for any named count triggers a visible alert."""
+    """FR-004: >1% de rows_read em qualquer contagem nomeada dispara um alerta visível."""
     if not rows_read:
         return []
     alerts = []
@@ -75,7 +77,7 @@ def check_alerts(named_counts: dict, rows_read: int) -> list:
 
 
 def write_run_log(spark, entry: dict) -> None:
-    """FR-002/FR-003: append one row to _pipeline_run_log, success or failure."""
+    """FR-002/FR-003: adiciona uma linha em _pipeline_run_log, com sucesso ou falha."""
     row = {
         "pipeline_stage": entry["pipeline_stage"],
         "executed_at": entry["executed_at"],
@@ -93,10 +95,10 @@ def write_run_log(spark, entry: dict) -> None:
     for alert in row["alerts"]:
         print(f"ALERT [{entry['pipeline_stage']}]: {alert}")
 
-# Columns feature 003's full-schema comparison found drifting in type
-# family across months (float in 2023-01, integer in 2023-02..05) -- the
-# only columns this schema check is allowed to see disagree between
-# months.
+# Colunas que a comparação de schema completa da feature 003 achou com
+# drift de família de tipo entre os meses (float em 2023-01, integer em
+# 2023-02..05) -- as únicas colunas que esta checagem de schema pode ver
+# divergir entre os meses.
 KNOWN_DRIFTED_COLUMNS = {"passenger_count", "ratecodeid"}
 DRIFT_TARGET_TYPE = T.IntegerType()
 
@@ -126,7 +128,7 @@ def schema_family_map(df) -> dict:
 
 
 def assert_known_schema(schemas_by_month: dict) -> None:
-    """FR-008: fail fast if any month's schema deviates outside the known drift list."""
+    """FR-008: falha rápido se o schema de algum mês desviar além da lista de drift conhecida."""
     baseline_month = MONTHS[0]
     baseline = schemas_by_month[baseline_month]
     for month, columns in schemas_by_month.items():
@@ -149,9 +151,9 @@ def assert_known_schema(schemas_by_month: dict) -> None:
 
 def read_month(spark, month: str):
     df = spark.read.parquet(file_path(month))
-    # input_file_name() is not supported on Unity Catalog-governed compute
-    # (UC_COMMAND_NOT_SUPPORTED.WITH_RECOMMENDATION, confirmed at runtime) --
-    # the hidden _metadata.file_name column is the supported equivalent.
+    # input_file_name() não é suportado em compute governado por Unity Catalog
+    # (UC_COMMAND_NOT_SUPPORTED.WITH_RECOMMENDATION, confirmado em runtime) --
+    # a coluna oculta _metadata.file_name é o equivalente suportado.
     df = df.withColumn("_source_file", F.col("_metadata.file_name"))
     for column in KNOWN_DRIFTED_COLUMNS:
         matches = [f.name for f in df.schema if f.name.lower() == column]
@@ -179,12 +181,12 @@ def dedup_and_write(spark, combined) -> dict:
     deduped = combined.dropDuplicates(subset=original_columns)
     rows_written = deduped.count()
 
-    # The old ifood_case.bronze schema (feature 002's landing-zone volume)
-    # was dropped by rename_landing_schema.py -- this is the new bronze
-    # schema, created fresh to hold the Delta table.
+    # O schema antigo ifood_case.bronze (o volume de landing zone da
+    # feature 002) foi apagado por rename_landing_schema.py -- este é o
+    # novo schema bronze, criado do zero para conter a tabela Delta.
     spark.sql(
         f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.{BRONZE_SCHEMA} "
-        "COMMENT 'iFood case bronze schema - Delta table, schema-normalized ingestion from landing, no business rules'"
+        "COMMENT 'Schema bronze do case iFood - tabela Delta, ingestão a partir da landing com schema normalizado, sem regras de negócio'"
     )
     deduped.write.format("delta").mode("overwrite").saveAsTable(
         f"{CATALOG}.{BRONZE_SCHEMA}.{TABLE}"
@@ -227,10 +229,11 @@ if __name__ == "__main__":
             "alerts": alerts,
         })
     except Exception:
-        # NOTE: dbutils.notebook.exit() below raises its own internal
-        # control-flow exception on success -- it MUST stay outside this
-        # try block, or every successful run also logs a spurious
-        # "failed" row (found by actually running this, feature 007).
+        # NOTA: dbutils.notebook.exit() abaixo levanta sua própria exceção
+        # interna de controle de fluxo em caso de sucesso -- ele PRECISA
+        # ficar fora deste bloco try, ou toda execução bem-sucedida
+        # também registra uma linha "failed" espúria (descoberto rodando
+        # isto de verdade, feature 007).
         write_run_log(spark, {
             "pipeline_stage": "bronze",
             "executed_at": executed_at,

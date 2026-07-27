@@ -1,13 +1,14 @@
 # Databricks notebook source
-"""Idempotent Unity Catalog landing zone provisioning (spec FR-003).
+"""Provisionamento idempotente da landing zone no Unity Catalog (spec FR-003).
 
-Tries to create a dedicated `ifood_case` catalog first, falling back to
-the workspace's default catalog with an `ifood_case_bronze` schema if
-that fails (research.md, decision 3). In practice, `CREATE CATALOG IF NOT
-EXISTS` via Spark SQL inside a notebook succeeds on Free Edition using its
-Default Storage automatically -- only the standalone CLI `catalogs create`
-call needed an explicit managed location (see DECISOES_PROJETO.md 2.2) --
-so the fallback below is a safety net, not the path actually used.
+Tenta primeiro criar um catalog dedicado `ifood_case`, caindo para o
+catalog padrão do workspace com um schema `ifood_case_bronze` se isso
+falhar (research.md, decisão 3). Na prática, `CREATE CATALOG IF NOT
+EXISTS` via Spark SQL dentro de um notebook funciona na Free Edition
+usando o Default Storage automaticamente -- só a chamada avulsa da CLI
+`catalogs create` precisou de uma managed location explícita (ver
+DECISOES_PROJETO.md 2.2) -- então o fallback abaixo é uma rede de
+segurança, não o caminho de fato usado.
 """
 
 import json
@@ -28,11 +29,11 @@ def provision_landing_zone(spark) -> dict:
 
     spark.sql(
         f"CREATE SCHEMA IF NOT EXISTS {catalog}.{schema} "
-        "COMMENT 'iFood case bronze/landing schema - raw Yellow Taxi files, unmodified from source'"
+        "COMMENT 'Schema bronze/landing do case iFood - arquivos Yellow Taxi crus, sem modificação em relação à fonte'"
     )
     spark.sql(
         f"CREATE VOLUME IF NOT EXISTS {catalog}.{schema}.{VOLUME} "
-        "COMMENT 'Landing zone for raw NYC TLC Yellow Taxi monthly parquet files (Jan-May 2023), unmodified from source'"
+        "COMMENT 'Landing zone dos arquivos parquet mensais crus de Yellow Taxi da NYC TLC (Jan-Mai 2023), sem modificação em relação à fonte'"
     )
     return {
         "catalog": catalog,

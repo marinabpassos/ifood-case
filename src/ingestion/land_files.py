@@ -1,16 +1,17 @@
 # Databricks notebook source
-"""Land and verify the 5 monthly Yellow Taxi files in the landing zone.
+"""Aterrissa e verifica os 5 arquivos mensais de Yellow Taxi na landing zone.
 
-Implements spec 002's FR-004 (land unmodified), FR-005 (non-empty,
-readable, not a size outlier), FR-006 (no transformation), and FR-008
-(retry once, then flag incomplete). Files are landed directly from the
-NYC TLC source into the Unity Catalog Volume (direct-download path, per
-DECISOES_PROJETO.md 2.1 -- outbound access was confirmed reachable, so
-the local-download-and-upload fallback is not used).
+Implementa da spec 002: FR-004 (aterrissar sem modificar), FR-005 (não
+vazio, legível, sem outlier de tamanho), FR-006 (nenhuma transformação) e
+FR-008 (uma tentativa de retry, depois sinalizar como incompleto). Os
+arquivos são aterrissados direto da fonte NYC TLC no Volume do Unity
+Catalog (caminho de download direto, conforme DECISOES_PROJETO.md 2.1 --
+o acesso de saída foi confirmado acessível, então o fallback de download
+local + upload não é usado).
 
-The size-outlier check needs every month's size to compute a median, so
-all 5 months are landed first, then verified as a batch (research.md,
-decision 6).
+A checagem de outlier de tamanho precisa do tamanho de todos os meses
+para calcular a mediana, então os 5 meses são aterrissados primeiro e só
+depois verificados em lote (research.md, decisão 6).
 """
 
 import json
@@ -81,7 +82,7 @@ def land_and_verify(spark) -> dict:
     for month in MONTHS:
         ok = verify(month, landed, sizes, spark)
         if not ok:
-            landed[month] = try_land(month)  # one automatic retry (FR-008)
+            landed[month] = try_land(month)  # uma tentativa automática de retry (FR-008)
             sizes[month] = size_of(month)
             ok = verify(month, landed, sizes, spark)
         results[month] = {

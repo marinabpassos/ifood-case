@@ -1,14 +1,16 @@
 # Databricks notebook source
-"""Move the landing zone from ifood_case.bronze to ifood_case.landing.
+"""Move a landing zone de ifood_case.bronze para ifood_case.landing.
 
-Implements spec 004's FR-001 (User Story 1). Unity Catalog has no `ALTER
-SCHEMA ... RENAME TO` on any tier (research.md, decision 1, confirmed via
-Databricks documentation) -- not a Free Edition-specific restriction. This
-"rename" is therefore a scripted create-new + copy + verify + drop-old:
-create `ifood_case.landing` (schema + `yellow_taxi_raw` volume), copy the
-5 files from `ifood_case.bronze.yellow_taxi_raw`, verify each file's size
-matches feature 002's recorded sizes byte-for-byte, and only then drop the
-old `ifood_case.bronze` schema/volume -- never before verification passes.
+Implementa da spec 004: FR-001 (User Story 1). O Unity Catalog não tem
+`ALTER SCHEMA ... RENAME TO` em nenhuma camada (research.md, decisão 1,
+confirmado via documentação do Databricks) -- não é uma restrição
+específica da Free Edition. Esse "rename" é, portanto, um create-new +
+copy + verify + drop-old feito por script: criar `ifood_case.landing`
+(schema + volume `yellow_taxi_raw`), copiar os 5 arquivos de
+`ifood_case.bronze.yellow_taxi_raw`, verificar que o tamanho de cada
+arquivo bate byte a byte com os tamanhos registrados na feature 002 e só
+então apagar o schema/volume antigo `ifood_case.bronze` -- nunca antes da
+verificação passar.
 """
 
 import json
@@ -21,8 +23,9 @@ OLD_PATH = f"/Volumes/{CATALOG}/{OLD_SCHEMA}/{VOLUME}"
 NEW_PATH = f"/Volumes/{CATALOG}/{NEW_SCHEMA}/{VOLUME}"
 MONTHS = ["01", "02", "03", "04", "05"]
 
-# Byte sizes landed and verified byte-for-byte against source in feature 002
-# (DECISOES_PROJETO.md SS2.3) -- the values this move must still match.
+# Tamanhos em bytes aterrissados e verificados byte a byte contra a fonte
+# na feature 002 (DECISOES_PROJETO.md SS2.3) -- os valores que este move
+# ainda precisa bater.
 EXPECTED_SIZES = {
     "01": 47_673_370,
     "02": 47_748_012,
@@ -39,11 +42,11 @@ def file_name(month: str) -> str:
 def create_landing_schema(spark) -> None:
     spark.sql(
         f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.{NEW_SCHEMA} "
-        "COMMENT 'iFood case landing schema - raw Yellow Taxi files, unmodified from source'"
+        "COMMENT 'Schema landing do case iFood - arquivos Yellow Taxi crus, sem modificação em relação à fonte'"
     )
     spark.sql(
         f"CREATE VOLUME IF NOT EXISTS {CATALOG}.{NEW_SCHEMA}.{VOLUME} "
-        "COMMENT 'Landing zone for raw NYC TLC Yellow Taxi monthly parquet files (Jan-May 2023), unmodified from source'"
+        "COMMENT 'Landing zone dos arquivos parquet mensais crus de Yellow Taxi da NYC TLC (Jan-Mai 2023), sem modificação em relação à fonte'"
     )
 
 
@@ -77,7 +80,7 @@ def move_landing_zone(spark, dbutils) -> dict:
     verification = verify_move(dbutils)
     all_verified = all(v["matches_expected"] for v in verification.values())
     if all_verified:
-        drop_old_schema(spark)  # only drop the old location once every file is confirmed
+        drop_old_schema(spark)  # só apaga a localização antiga depois que todo arquivo é confirmado
     return {
         "verification": verification,
         "all_verified": all_verified,

@@ -1,12 +1,13 @@
-"""Validate structural completeness of contracts/nyc_taxi_silver.yaml.
+"""Valida a completude estrutural de contracts/nyc_taxi_silver.yaml.
 
-Implements spec 005's FR-001 through FR-007 as a checkable assertion:
-loads the YAML and confirms the 8 top-level keys, the 6-entry `columns`
-list, and the 5-entry `quality_rules` list all match the structure fixed
-by specs/005-silver-data-contract/contracts/silver-contract-structure.md.
-Runs entirely locally -- no Databricks connection, no table read
-(research.md decision 4). It does not validate that any real data
-conforms to the contract; that is feature 006's job.
+Implementa da spec 005: FR-001 a FR-007 como uma assertion verificável:
+carrega o YAML e confirma que as 8 chaves de topo, a lista `columns` de 6
+entradas e a lista `quality_rules` de 5 entradas batem com a estrutura
+fixada em
+specs/005-silver-data-contract/contracts/silver-contract-structure.md.
+Roda inteiramente local -- sem conexão com o Databricks, sem leitura de
+tabela (research.md decisão 4). Não valida que algum dado real está de
+acordo com o contrato; isso é trabalho da feature 006.
 """
 
 import json

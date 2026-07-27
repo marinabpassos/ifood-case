@@ -139,11 +139,12 @@ def generate_sql(question: str, context: str = "") -> str:
 
 
 def execute_sql(sql: str):
-    """`wait_timeout` maxes out at 50s (SDK-enforced); a cold SQL
-    Warehouse (auto_stop_mins=10, feature 002) can take longer than that
-    to spin back up, so a still-PENDING/RUNNING statement is polled via
-    `get_statement` rather than assumed complete -- found by actually
-    hitting this after the warehouse had gone idle (2026-07-24)."""
+    """`wait_timeout` tem teto de 50s (imposto pelo SDK); um SQL Warehouse
+    frio (auto_stop_mins=10, feature 002) pode levar mais que isso para
+    voltar a subir, então um statement ainda em PENDING/RUNNING é
+    consultado via `get_statement` em vez de assumido como concluído --
+    descoberto ao esbarrar nisso de verdade depois que o warehouse ficou
+    ocioso (2026-07-24)."""
     result = w.statement_execution.execute_statement(
         warehouse_id=WAREHOUSE_ID,
         statement=sql,

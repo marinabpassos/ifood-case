@@ -1,12 +1,13 @@
 # Databricks notebook source
-"""Per-month profiling of the bronze Yellow Taxi files.
+"""Profiling mês a mês dos arquivos bronze de Yellow Taxi.
 
-Implements spec 003's FR-002 (volumetry) and FR-003 (completeness).
-Reads each of the 5 months independently (research.md SS6) -- never a
-unioned DataFrame -- so every metric stays cleanly attributable to its
-month. Required-column names are literal (VendorID, passenger_count,
-total_amount, tpep_pickup_datetime, tpep_dropoff_datetime) since they're
-confirmed consistently cased across all 5 months.
+Implementa da spec 003: FR-002 (volumetria) e FR-003 (completude). Lê
+cada um dos 5 meses de forma independente (research.md SS6) -- nunca um
+DataFrame unido -- para que cada métrica fique claramente atribuível ao
+seu mês. Os nomes das colunas obrigatórias são literais (VendorID,
+passenger_count, total_amount, tpep_pickup_datetime,
+tpep_dropoff_datetime), já que estão confirmados com caixa consistente
+nos 5 meses.
 """
 
 import json
@@ -75,7 +76,7 @@ def descriptive_stats(df, column: str) -> dict:
 
 
 WINDOW_START = "2023-01-01 00:00:00"
-WINDOW_END = "2023-06-01 00:00:00"  # exclusive upper bound
+WINDOW_END = "2023-06-01 00:00:00"  # limite superior exclusivo
 
 
 def _in_window(column: str):
