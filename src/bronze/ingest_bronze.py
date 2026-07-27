@@ -28,7 +28,7 @@ Implements spec 004's FR-002 through FR-008 (User Stories 2-4):
 
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 from pyspark.sql import functions as F
 from pyspark.sql import types as T
@@ -210,7 +210,7 @@ def ingest_bronze(spark) -> dict:
 
 if __name__ == "__main__":
     start_time = time.time()
-    executed_at = datetime.utcnow()
+    executed_at = datetime.now(timezone.utc)
     try:
         result = ingest_bronze(spark)
         metrics = {"duplicates_removed": result.get("duplicates_removed")}

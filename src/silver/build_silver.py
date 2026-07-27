@@ -25,7 +25,7 @@ Implements spec 006's FR-001 through FR-008:
 
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 import yaml
 from pyspark.sql import functions as F
@@ -199,7 +199,7 @@ def build_silver(spark) -> dict:
 
 if __name__ == "__main__":
     start_time = time.time()
-    executed_at = datetime.utcnow()
+    executed_at = datetime.now(timezone.utc)
     try:
         try:
             result = build_silver(spark)
